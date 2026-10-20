@@ -1,0 +1,122 @@
+.mm-ranking-page {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1088px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  color: var(--text, #211C18);
+  font-family: "Pretendard", system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+}
+.mm-ranking-page__header { margin-bottom: 16px; }
+.mm-ranking-page__header p { margin: 0 0 4px; }
+.mm-ranking-page__eyebrow {
+  color: var(--accent-strong, #B23A0B);
+  font-size: 14px;
+  font-weight: 700;
+}
+.mm-ranking-page__header h1 {
+  margin: 0 0 6px;
+  font-family: "Jua", "Pretendard", system-ui, sans-serif;
+  font-size: 28px;
+  font-weight: 400;
+  line-height: 1.4;
+}
+.mm-ranking-page__header > p:not(.mm-ranking-page__eyebrow) {
+  color: var(--text-muted, #6B625B);
+}
+.mm-ranking-page__header .mm-ranking-page__demo {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft, #FFEBDD);
+  color: var(--accent-strong, #B23A0B);
+  font-size: 14px;
+}
+.mm-ranking-page__note {
+  margin: 12px 0 0;
+  color: var(--text-muted, #6B625B);
+  font-size: 14px;
+}
+.mm-ranking-table__scroll {
+  overflow-x: auto;
+  border: 1px solid var(--border, #F1E4D8);
+  border-radius: 16px;
+  background: var(--surface, #FFFFFF);
+}
+.mm-ranking-table__scroll:focus-visible,
+.mm-ranking-table__name a:focus-visible {
+  outline: 3px solid var(--accent-strong, #B23A0B);
+  outline-offset: 3px;
+}
+.mm-ranking-table {
+  width: 100%;
+  min-width: 660px;
+  border-collapse: collapse;
+  text-align: left;
+}
+.mm-ranking-table th,
+.mm-ranking-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border, #F1E4D8);
+  vertical-align: middle;
+}
+.mm-ranking-table thead {
+  background: var(--bg, #FFF9F4);
+  color: var(--text-muted, #6B625B);
+  font-size: 14px;
+}
+.mm-ranking-table tbody tr:last-child > * { border-bottom: 0; }
+.mm-ranking-table tbody tr:hover { background: var(--bg, #FFF9F4); }
+.mm-ranking-table__name { max-width: 240px; overflow-wrap: anywhere; }
+.mm-ranking-table__name a { color: inherit; text-underline-offset: 3px; }
+.mm-ranking-table__rank {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--bg, #FFF9F4);
+  color: var(--text-muted, #6B625B);
+  font-weight: 700;
+}
+.mm-ranking-table__rank--top {
+  background: var(--accent-strong, #B23A0B);
+  color: #FFFFFF;
+}
+.mm-ranking-table__rating { font-weight: 700; white-space: nowrap; }
+.mm-ranking-table__star { color: var(--accent, #D9480F); }
+.mm-ranking-table__count { color: var(--text-muted, #6B625B); white-space: nowrap; }
+.mm-ranking-table__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mm-ranking-table__tags li {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--bg, #FFF9F4);
+  color: var(--text-muted, #6B625B);
+  font-size: 14px;
+  overflow-wrap: anywhere;
+  max-width: 24ch;
+}
+.mm-ranking-table__sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+@media (max-width: 480px) {
+  .mm-ranking-page { padding: 20px 16px 32px; }
+}
