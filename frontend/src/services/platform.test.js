@@ -95,3 +95,33 @@ test("API errors never fall back to fake success or demo data", async () => {
   );
   await assert.rejects(api.submitVote(2, { responses: [] }), /자격 없음/);
 });
+
+test("enrollment is persistent, rejects duplicate and closed courses, and cancels", async () => {
+  const storage = memory(),
+    api = createDemo(storage);
+  await assert.rejects(api.enroll(1));
+  await assert.rejects(api.enroll(6));
+  const enrollment = await api.enroll(4);
+  await assert.rejects(api.enroll(4));
+  assert.equal((await createDemo(storage).enrollments()).items.length, 1);
+  await api.cancelEnrollment(enrollment.id);
+  assert.equal((await api.enrollments()).items.length, 0);
+});
+test("review validates required reasons and approved survey deadline", async () => {
+  const api = createDemo(memory());
+  await assert.rejects(api.review(1, { action: "REJECT", reason: "" }));
+  await assert.rejects(
+    api.review(1, {
+      action: "APPROVE",
+      threshold: 12,
+      surveyDeadline: "2020-01-01",
+    }),
+  );
+  await api.review(1, {
+    action: "APPROVE",
+    threshold: 12,
+    surveyDeadline: new Date(Date.now() + 86400000).toISOString(),
+    reason: "",
+  });
+  assert.equal((await api.detail(1)).threshold, 12);
+});

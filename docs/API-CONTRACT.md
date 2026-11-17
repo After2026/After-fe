@@ -49,3 +49,20 @@ type Response = { slotId: number; availability: 'AVAILABLE' | 'ADJUSTABLE' | 'UN
 ## 후속 확정 사항
 
 실제 API 호스트, CORS/쿠키 도메인, 각 경로의 JSON 및 필드 제약, 검색·정렬 파라미터 이름, 슬롯 요일·교시 형식, 학년별 제한 및 잔여 관심 횟수, 관리자/교사 워크플로, 공동제안 초대·제출, 디자인 원본이 필요합니다. 필드가 달라지면 `src/lib/api.js`에서 서버 JSON을 이 계약으로 변환하도록 수정하면 됩니다.
+
+
+## 첨부 디자인 반영 시 추가한 계약 가정
+
+- `GET /auth/username-check?username=...` → `{available:boolean}`
+- `GET /enrollments/courses` → `{items:(Proposal & {capacity,enrollmentCount,canEnroll,enrollmentDeadline,courseTime})[]}`
+- `GET /users/me/enrollments` → `{items:{id,proposalId,title}[]}`
+- `POST /enrollments` 본문 `{proposalId}` → `{id,proposalId,title}`
+- `DELETE /enrollments/{enrollmentId}` → 204 또는 JSON
+- `GET /admin/proposals` → `{items:Proposal[]}`
+- `GET /admin/proposals/{id}/review` → `{proposal:Proposal,teacherOpinion:{comment}|null,similarProposals:Proposal[]}`
+- `POST /admin/proposals/{id}/review` 본문 `{action,threshold,surveyDeadline,reason}`. action은 `APPROVE / REQUEST_CHANGES / REJECT`를 가정합니다. 보류는 명세의 `POST /admin/proposals/{id}/hold`에 `{reason}`을 전송합니다.
+- `POST /proposals/similar-check` 본문 `{title}` → `{items:Proposal[]}`
+- 제안 작성은 디자인에 맞춰 `activityPlan,capacity,instructorName,referenceUrl` 필드를 추가했습니다.
+- 회원가입에 `grade,classNumber,email,termsAgreed,privacyAgreed,notificationConsent`를 추가했습니다. 실제 서버의 정책 및 스키마 확정 필요.
+
+체험 수강신청은 예시 ENROLLING 상태 수업만 신청할 수 있고 중복·최대 2개 제한을 확인합니다. 실제 정원·우선권·시간 충돌·서버 동시성 검증을 대체하지 않습니다. 관리자 체험은 명시적으로 표시하며 실제 API 모드에서는 역할을 확인합니다. 보안은 반드시 서버가 다시 검증해야 합니다.

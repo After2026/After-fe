@@ -39,6 +39,27 @@ export function createClient(baseUrl = "/api/v1", fetcher = fetch) {
     return data;
   }
   return {
+    usernameCheck: (username) =>
+      request(`/auth/username-check?${new URLSearchParams({ username })}`),
+    courses: () => request("/enrollments/courses"),
+    enrollments: () => request("/users/me/enrollments"),
+    enroll: (proposalId) =>
+      request("/enrollments", { method: "POST", body: { proposalId } }),
+    cancelEnrollment: (id) =>
+      request(`/enrollments/${id}`, { method: "DELETE" }),
+    reviewList: () => request("/admin/proposals"),
+    reviewDetail: (id) => request(`/admin/proposals/${id}/review`),
+    review: (id, body) =>
+      body.action === "HOLD"
+        ? request(`/admin/proposals/${id}/hold`, {
+            method: "POST",
+            body: { reason: body.reason },
+          })
+        : request(`/admin/proposals/${id}/review`, { method: "POST", body }),
+    similar: (body) =>
+      request("/proposals/similar-check", { method: "POST", body }),
+    invite: (id) =>
+      request(`/proposals/${id}/co-proposal-invites`, { method: "POST" }),
     me: () => request("/users/me"),
     login: (body) => request("/auth/login", { method: "POST", body }),
     signup: (body) => request("/auth/signup", { method: "POST", body }),

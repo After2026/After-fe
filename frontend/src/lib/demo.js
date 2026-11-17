@@ -10,7 +10,7 @@ export function seed() {
     proposals: [
       {
         id: 1,
-        title: "파이썬으로 만드는 나만의 서비스",
+        title: "파이썬으로 디스코드 봇 만들기",
         category: "IT",
         description:
           "기초 문법부터 웹 서비스 제작까지, 함께 배우며 작은 프로젝트를 완성해요.",
@@ -24,7 +24,7 @@ export function seed() {
       },
       {
         id: 2,
-        title: "함께 뛰는 방과후 농구",
+        title: "현직 개발자와 포트폴리오 리뷰",
         category: "ARTS_PE",
         description:
           "기본기 훈련과 팀 경기를 통해 농구를 즐겨요. 초보자도 환영합니다.",
@@ -43,7 +43,7 @@ export function seed() {
       },
       {
         id: 3,
-        title: "영화로 만나는 영어 회화",
+        title: "아카펠라 발성 앙상블",
         category: "SUBJECT",
         description:
           "좋아하는 영화 장면으로 실생활 영어 표현을 배우고 대화해요.",
@@ -57,16 +57,54 @@ export function seed() {
       },
       {
         id: 4,
-        title: "나의 진로를 찾는 디자인 스튜디오",
+        title: "백엔드 입문 과정",
         category: "CAREER",
         description:
           "다양한 디자인 분야를 탐색하고 나만의 포트폴리오를 만들어 봐요.",
         targetGrades: [1, 2, 3],
-        status: "CONFIRMED",
+        status: "ENROLLING",
         interestCount: 28,
         threshold: 20,
         proposerName: "정지우",
         icon: "✳",
+      },
+      {
+        id: 5,
+        title: "3D 프린팅으로 생활용품 만들기",
+        category: "IT",
+        description:
+          "모델링 기초를 배우고 나만의 생활용품을 제작하는 수업입니다.",
+        targetGrades: [1, 2],
+        status: "ENROLLING",
+        interestCount: 15,
+        threshold: 20,
+        proposerName: "이민준",
+        icon: "⌘",
+      },
+      {
+        id: 6,
+        title: "실험으로 배우는 화학 1",
+        category: "SUBJECT",
+        description: "안전한 실험을 통해 화학의 기초 원리를 탐구합니다.",
+        targetGrades: [2, 3],
+        status: "CONFIRMED",
+        interestCount: 9,
+        threshold: 15,
+        proposerName: "박지민",
+        icon: "▤",
+      },
+      {
+        id: 7,
+        title: "영어 원서로 읽는 과학 탐험",
+        category: "SUBJECT",
+        description: "흥미로운 과학 이야기를 영어 원서로 함께 읽어요.",
+        targetGrades: [1, 2],
+        status: "SURVEYING",
+        interestCount: 4,
+        threshold: 20,
+        surveyDeadline: deadline(),
+        proposerName: "김도현",
+        icon: "▤",
       },
     ],
     interests: { 2: { intentLevel: 2, comment: "" } },
@@ -115,6 +153,104 @@ export function createDemo(storage = localStorage) {
     };
   }
   return {
+    usernameCheck: async (username) => ({ available: username !== "junho07" }),
+    signup: async () => {
+      throw new Error(
+        "체험 모드에서는 가입 신청을 서버에 전송하지 않습니다. 실제 API 모드에서 이용해 주세요.",
+      );
+    },
+    courses: async () => ({
+      items: load()
+        .proposals.filter((p) => ["ENROLLING", "CONFIRMED"].includes(p.status))
+        .map((p) => ({
+          ...p,
+          capacity: 20,
+          enrollmentCount: p.id === 2 ? 14 : 9,
+          canEnroll: p.status === "ENROLLING",
+          enrollmentDeadline: deadline(),
+          courseTime: p.id === 2 ? "수요일 8교시" : "화요일 9교시",
+        })),
+    }),
+    enrollments: async () => ({ items: load().enrollments || [] }),
+    enroll: async (proposalId) => {
+      const s = load(),
+        p = find(s, proposalId);
+      if (p.status !== "ENROLLING")
+        throw new Error("수강신청 가능한 수업이 아닙니다.");
+      s.enrollments ||= [];
+      if (s.enrollments.some((e) => e.proposalId === Number(proposalId)))
+        throw new Error("이미 신청한 수업입니다.");
+      if (s.enrollments.length >= 2)
+        throw new Error("최대 2개 수업까지 신청할 수 있습니다.");
+      const enrollment = {
+        id: Date.now(),
+        proposalId: Number(proposalId),
+        title: p.title,
+      };
+      s.enrollments.push(enrollment);
+      save(s);
+      return enrollment;
+    },
+    cancelEnrollment: async (id) => {
+      const s = load();
+      s.enrollments = (s.enrollments || []).filter((e) => e.id !== Number(id));
+      save(s);
+    },
+    reviewList: async () => ({
+      items: load().proposals.filter((p) =>
+        ["SURVEYING", "DRAFT"].includes(p.status),
+      ),
+    }),
+    reviewDetail: async (id) => ({
+      proposal: find(load(), id),
+      teacherOpinion: null,
+      similarProposals: [],
+    }),
+    review: async (id, body) => {
+      const s = load(),
+        p = find(s, id);
+      if (
+        !["APPROVE", "REQUEST_CHANGES", "REJECT", "HOLD"].includes(body.action)
+      )
+        throw new Error("처리 방식을 선택해 주세요.");
+      if (body.action !== "APPROVE" && !body.reason?.trim())
+        throw new Error("처리 사유를 입력해 주세요.");
+      if (
+        body.action === "APPROVE" &&
+        (!(body.threshold > 0) ||
+          !body.surveyDeadline ||
+          new Date(body.surveyDeadline) <= new Date())
+      )
+        throw new Error("유효한 임계치와 미래 마감일을 입력해 주세요.");
+      p.status = {
+        APPROVE: "SURVEYING",
+        REQUEST_CHANGES: "DRAFT",
+        REJECT: "REJECTED",
+        HOLD: "ON_HOLD",
+      }[body.action];
+      if (body.action === "APPROVE") {
+        p.threshold = body.threshold;
+        p.surveyDeadline = body.surveyDeadline;
+      }
+      p.reviewReason = body.reason;
+      save(s);
+      return p;
+    },
+    similar: async (body) => ({
+      items: load()
+        .proposals.filter(
+          (p) =>
+            p.title.includes(body.title.trim()) || body.title.includes(p.title),
+        )
+        .slice(0, 3),
+    }),
+    invite: async (id) => {
+      const s = load(),
+        p = find(s, id);
+      if (p.status !== "DRAFT" || p.proposerName !== user.name)
+        throw new Error("내 작성중 제안에서만 초대할 수 있습니다.");
+      throw new Error("체험 모드에서는 공동제안 초대를 발급하지 않습니다.");
+    },
     me: async () => user,
     login: async () => {
       throw new Error("실제 로그인은 API 모드에서 이용해 주세요.");
