@@ -125,3 +125,12 @@ test("review validates required reasons and approved survey deadline", async () 
   });
   assert.equal((await api.detail(1)).threshold, 12);
 });
+
+test('demo opens logged out and starts only through explicit entry, then logout persists',async()=>{
+  const storage=memory(),session=memory(),api=createDemo(storage,session);
+  await assert.rejects(api.me(),e=>e.status===401);
+  await api.startDemo();
+  assert.equal((await createDemo(storage,session).me()).role,'STUDENT');
+  await api.logout();
+  await assert.rejects(createDemo(storage,session).me(),e=>e.status===401);
+});

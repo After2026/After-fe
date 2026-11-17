@@ -27,6 +27,19 @@ export function Login() {
       setBusy(false);
     }
   }
+  async function startDemo() {
+    setBusy(true);
+    setError(null);
+    try {
+      await service.startDemo();
+      await reload();
+      navigate("/");
+    } catch (e) {
+      setError(e);
+    } finally {
+      setBusy(false);
+    }
+  }
   return (
     <div className="login-layout">
       <section className="login-story">
@@ -101,9 +114,14 @@ export function Login() {
             <Link to="/signup">회원가입</Link>
           </div>
           {demoMode && (
-            <Link className="quiet block" to="/">
-              체험 모드 둘러보기
-            </Link>
+            <button
+              type="button"
+              className="quiet block"
+              disabled={busy}
+              onClick={startDemo}
+            >
+              체험 시작 (회원가입 없이)
+            </button>
           )}
         </form>
       </section>

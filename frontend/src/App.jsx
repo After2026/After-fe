@@ -1,5 +1,12 @@
 import { useState, useEffect, useContext } from "react";
-import { Link, NavLink, Routes, Route, useLocation } from "react-router-dom";
+import {
+  Link,
+  NavLink,
+  Routes,
+  Route,
+  useLocation,
+  Navigate,
+} from "react-router-dom";
 import { service, demoMode } from "./lib/service";
 import { Auth, ErrorBox, Logo, Icon } from "./ui";
 import { Home, Detail, NewProposal, My, Guide } from "./pages/Proposals";
@@ -14,15 +21,7 @@ function Protected({ children, admin = false }) {
         세션을 확인하고 있습니다.
       </p>
     );
-  if (!user)
-    return (
-      <section className="empty">
-        <h1>로그인이 필요합니다.</h1>
-        <Link className="button" to="/login">
-          로그인하기
-        </Link>
-      </section>
-    );
+  if (!user) return <Navigate to="/login" replace />;
   if (admin && !demoMode && !["ADMIN", "SUPER_ADMIN"].includes(user.role))
     return <ErrorBox error="관리자만 접근할 수 있습니다." />;
   return children;
@@ -99,14 +98,17 @@ export default function App() {
                       </span>
                       {user.name}
                     </Link>
-                    {!demoMode && (
+                    {
                       <button className="quiet" onClick={logout}>
                         로그아웃
                       </button>
-                    )}
+                    }
                   </>
                 ) : (
-                  <Link to="/login">로그인</Link>
+                  <>
+                    <Link to="/login">로그인</Link>
+                    <Link to="/signup">회원가입</Link>
+                  </>
                 )}
               </div>
             </div>

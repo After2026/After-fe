@@ -111,7 +111,10 @@ export function seed() {
     votes: {},
   };
 }
-export function createDemo(storage = localStorage) {
+export function createDemo(
+  storage = localStorage,
+  session = typeof sessionStorage === "undefined" ? storage : sessionStorage,
+) {
   function load() {
     const raw = storage.getItem(KEY);
     if (!raw) return seed();
@@ -251,11 +254,24 @@ export function createDemo(storage = localStorage) {
         throw new Error("내 작성중 제안에서만 초대할 수 있습니다.");
       throw new Error("체험 모드에서는 공동제안 초대를 발급하지 않습니다.");
     },
-    me: async () => user,
+    startDemo: async () => {
+      session.setItem("after.demo.session", "active");
+      return user;
+    },
+    me: async () => {
+      if (session.getItem("after.demo.session") !== "active") {
+        const error = new Error("로그인이 필요합니다.");
+        error.status = 401;
+        throw error;
+      }
+      return user;
+    },
     login: async () => {
       throw new Error("실제 로그인은 API 모드에서 이용해 주세요.");
     },
-    logout: async () => {},
+    logout: async () => {
+      session.setItem("after.demo.session", "");
+    },
     list: async ({
       q = "",
       category = "",
