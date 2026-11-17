@@ -39,6 +39,17 @@ export function createClient(baseUrl = "/api/v1", fetcher = fetch) {
     return data;
   }
   return {
+    notifications: ({ cursor } = {}) =>
+      request(
+        `/notifications?${new URLSearchParams({ limit: 20, ...(cursor ? { cursor } : {}) })}`,
+      ),
+    unreadCount: () => request("/notifications/unread-count"),
+    readNotification: (id) =>
+      request(`/notifications/${encodeURIComponent(id)}/read`, {
+        method: "PATCH",
+      }),
+    readAllNotifications: () =>
+      request("/notifications/read-all", { method: "POST" }),
     usernameCheck: (username) =>
       request(`/auth/username-check?${new URLSearchParams({ username })}`),
     courses: () => request("/enrollments/courses"),

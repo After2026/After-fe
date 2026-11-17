@@ -10,8 +10,9 @@ import {
 import { service, demoMode } from "./lib/service";
 import { Auth, ErrorBox, Logo, Icon } from "./ui";
 import { Home, Detail, NewProposal, My, Guide } from "./pages/Proposals";
-import { Vote, Results, VoteList } from "./pages/Voting";
+import { Vote, Results } from "./pages/Voting";
 import { Login, Signup } from "./pages/Authentication";
+import { Notifications, NotificationsBell } from "./pages/Notifications";
 import { Enrollments, Admin } from "./pages/Management";
 function Protected({ children, admin = false }) {
   const { user, loading } = useContext(Auth);
@@ -64,32 +65,27 @@ export default function App() {
       <div
         className={`app-shell ${authPage ? "auth-shell" : ""} ${adminPage ? "admin-shell" : ""}`}
       >
-        {!adminPage && (
+        {!adminPage && location.pathname !== "/login" && (
           <header className="site-header">
             <div className="header-inner">
               <Logo />
               <nav aria-label="주 메뉴">
-                <NavLink to="/" end>
-                  수업제안
-                </NavLink>
                 <NavLink
-                  to="/votes"
-                  className={() =>
-                    location.pathname.includes("/vote") ||
-                    location.pathname.endsWith("/result")
+                  to="/"
+                  end
+                  className={({ isActive }) =>
+                    isActive || location.pathname.startsWith("/proposals/")
                       ? "active"
                       : ""
                   }
                 >
-                  일정 투표
+                  수업제안
                 </NavLink>
                 <NavLink to="/enrollments">수강신청</NavLink>
                 <NavLink to="/my">내 수업</NavLink>
               </nav>
               <div className="account">
-                <Link to="/guide" aria-label="이용 안내">
-                  <Icon name="bell" />
-                </Link>
+                {user && <NotificationsBell />}
                 {user ? (
                   <>
                     <Link className="profile" to="/my">
@@ -134,6 +130,14 @@ export default function App() {
             <Route path="/signup" element={<Signup />} />
             <Route path="/guide" element={<Guide />} />
             <Route
+              path="/notifications"
+              element={
+                <Protected>
+                  <Notifications />
+                </Protected>
+              }
+            />
+            <Route
               path="/my"
               element={
                 <Protected>
@@ -141,14 +145,7 @@ export default function App() {
                 </Protected>
               }
             />
-            <Route
-              path="/votes"
-              element={
-                <Protected>
-                  <VoteList />
-                </Protected>
-              }
-            />
+            <Route path="/votes" element={<Navigate to="/my" replace />} />
             <Route
               path="/enrollments"
               element={
@@ -213,7 +210,6 @@ export default function App() {
             <nav className="bottom-nav" aria-label="모바일 메뉴">
               {[
                 ["/", "home", "제안"],
-                ["/votes", "calendar", "투표"],
                 ["/enrollments", "check", "수강신청"],
                 ["/my", "user", "내 수업"],
               ].map(([path, icon, label]) => (
@@ -223,7 +219,7 @@ export default function App() {
                   end={path === "/"}
                   className={({ isActive }) =>
                     isActive ||
-                    (path === "/votes" &&
+                    (path === "/" &&
                       (location.pathname.includes("/vote") ||
                         location.pathname.endsWith("/result")))
                       ? "active"

@@ -66,3 +66,16 @@ type Response = { slotId: number; availability: 'AVAILABLE' | 'ADJUSTABLE' | 'UN
 - 회원가입에 `grade,classNumber,email,termsAgreed,privacyAgreed,notificationConsent`를 추가했습니다. 실제 서버의 정책 및 스키마 확정 필요.
 
 체험 수강신청은 예시 ENROLLING 상태 수업만 신청할 수 있고 중복·최대 2개 제한을 확인합니다. 실제 정원·우선권·시간 충돌·서버 동시성 검증을 대체하지 않습니다. 관리자 체험은 명시적으로 표시하며 실제 API 모드에서는 역할을 확인합니다. 보안은 반드시 서버가 다시 검증해야 합니다.
+
+
+## 개설 알림 연결
+
+명세의 NTF-01~04 경로를 사용합니다. 실제 JSON은 아래 형태를 가정하며 실서버 확인이 필요합니다.
+
+- `GET /notifications?limit=20&cursor=...` → `{items:Notification[],nextCursor:string|null}`
+- `GET /notifications/unread-count` → `{count:number}`
+- `PATCH /notifications/{notificationId}/read` → 성공 응답 또는 204
+- `POST /notifications/read-all` → 성공 응답 또는 204
+- Notification: `{id,proposalId,title,message,read,createdAt}`. 알림의 수업 연결은 정수 proposalId로 프런트엔드 경로를 구성합니다.
+
+실제 개설 알림 생성은 서버의 개설 확정/수강신청 시작 이벤트에서 관심 학생별로 수행해야 합니다. 프런트엔드는 30초 간격·포커스 복귀 시 조회하며, 서버 알림을 임의 생성하지 않습니다. 체험 모드에서만 브라우저 내 관심 강좌의 저장된 상태로 개설 알림을 생성하고 중복을 제거합니다. Web Push 구독/권한 요청/발송은 구현하지 않았습니다.

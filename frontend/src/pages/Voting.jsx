@@ -1,45 +1,12 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { service } from "../lib/service";
-import {
-  Resource,
-  useResource,
-  ErrorBox,
-  Icon,
-  Card,
-  date,
-  Progress,
-} from "../ui";
+import { Resource, useResource, ErrorBox, Icon, date, Progress } from "../ui";
 const options = [
   ["AVAILABLE", "✓", "가능"],
   ["ADJUSTABLE", "△", "조정 가능"],
   ["UNAVAILABLE", "×", "불가"],
 ];
-export function VoteList() {
-  const r = useResource(() => service.list({ status: "VOTING" }));
-  return (
-    <section>
-      <div className="page-heading">
-        <div>
-          <p className="eyebrow">후보 일정에 투표해요</p>
-          <h1>일정 투표</h1>
-        </div>
-      </div>
-      <Resource resource={r}>
-        {(data) => (
-          <div className="cards">
-            {data.items.map((p) => (
-              <Card key={p.id} p={p} />
-            ))}
-            {!data.items.length && (
-              <p className="empty">진행 중인 일정 투표가 없습니다.</p>
-            )}
-          </div>
-        )}
-      </Resource>
-    </section>
-  );
-}
 export function Vote() {
   const { id } = useParams(),
     r = useResource(
@@ -147,7 +114,7 @@ function VoteForm({ p, v }) {
                 <fieldset className="slot" key={s.id}>
                   <legend>
                     {s.day}
-                    <small>{s.period}교시</small>
+                    <small>후보 시간</small>
                   </legend>
                   <div className="slot-choices">
                     {options.map(([value, symbol, label]) => (
@@ -254,7 +221,7 @@ export function Results() {
             <div>
               <span className="tag CONFIRMED">응답 현황</span>
               <h1>{p.title}</h1>
-              <p className="muted">요일 · 교시별 투표 현황을 확인하세요.</p>
+              <p className="muted">요일별 투표 현황을 확인하세요.</p>
             </div>
             <section className="dark-panel result-callout">
               <small>일정 투표 결과</small>
@@ -265,7 +232,7 @@ export function Results() {
           </div>
           <div className="results-layout">
             <section className="panel">
-              <h2>요일·교시별 참여 가능 인원</h2>
+              <h2>후보 시간별 참여 가능 인원</h2>
               <div className="result-heatmap">
                 {result.slots.map((s) => (
                   <div key={s.id}>
@@ -274,7 +241,7 @@ export function Results() {
                       className={`heat-cell ${s.availableCount ? "has-votes" : ""}`}
                     >
                       <strong>{s.availableCount}명</strong>
-                      <small>{s.period}교시 · 가능</small>
+                      <small>참여 가능</small>
                     </div>
                   </div>
                 ))}
@@ -297,9 +264,7 @@ export function Results() {
                 {result.slots.map((s) => (
                   <div className="day-result" key={s.id}>
                     <div>
-                      <b>
-                        {s.day} {s.period}교시
-                      </b>
+                      <b>{s.day}</b>
                       <strong>{s.availableCount + s.adjustableCount}명</strong>
                     </div>
                     <div className="stacked-bar">

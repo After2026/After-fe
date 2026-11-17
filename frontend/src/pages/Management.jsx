@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useState, useContext } from "react";
 import { service, demoMode } from "../lib/service";
 import {
@@ -11,7 +12,11 @@ import {
 } from "../ui";
 export function Enrollments() {
   const r = useResource(() =>
-      Promise.all([service.courses(), service.enrollments()]),
+      Promise.all([
+        service.courses(),
+        service.enrollments(),
+        service.myInterests(),
+      ]),
     ),
     [busy, setBusy] = useState(null),
     [error, setError] = useState(null);
@@ -46,7 +51,7 @@ export function Enrollments() {
         </p>
       )}
       <Resource resource={r}>
-        {([courses, enrollments]) => (
+        {([courses, enrollments, interests]) => (
           <>
             <section className="dark-panel enrollment-banner">
               <b>수강신청</b>
@@ -54,60 +59,93 @@ export function Enrollments() {
             </section>
             <div className="enrollment-layout">
               <div className="course-list">
-                {courses.items.map((c) => {
-                  const enrolled = enrollments.items.find(
-                    (e) => e.proposalId === c.id,
-                  );
-                  return (
+                <div className="pin-heading">
+                  <b>⌖ 관심 강좌 상단 고정</b>
+                  <span>관심 표시한 수업을 먼저 보여드려요.</span>
+                </div>
+                {interests.items
+                  .filter((p) => !courses.items.some((c) => c.id === p.id))
+                  .map((p) => (
                     <article
-                      className={`panel enrollment-card ${enrolled ? "enrolled" : ""}`}
-                      key={c.id}
+                      className="panel pinned-waiting"
+                      key={`waiting-${p.id}`}
                     >
-                      <div className="course-title">
-                        <span className="category-icon">
-                          <Icon
-                            name={c.category === "IT" ? "code" : "calendar"}
-                          />
-                        </span>
-                        <div>
-                          <div className="card-meta">
-                            <span className="tag navy">수강신청</span>
-                            <Tag status={c.status} />
-                          </div>
-                          <h2>{c.title}</h2>
-                          <p className="muted">
-                            {c.courseTime || "시간 확인 필요"} ·{" "}
-                            {c.targetGrades?.join("~")}학년
-                          </p>
-                        </div>
-                      </div>
-                      <div className="course-capacity">
-                        <span>
-                          {c.enrollmentCount || 0}/{c.capacity}명
-                        </span>
-                        <Progress
-                          value={c.enrollmentCount || 0}
-                          max={c.capacity}
-                        />
-                      </div>
-                      <button
-                        className={enrolled ? "danger-outline" : ""}
-                        disabled={
-                          busy !== null || (!enrolled && c.canEnroll === false)
-                        }
-                        onClick={() => act(c, enrolled)}
-                      >
-                        {busy === c.id
-                          ? "처리 중…"
-                          : enrolled
-                            ? "신청 취소"
-                            : c.canEnroll === false
-                              ? "신청 불가"
-                              : "신청"}
-                      </button>
+                      <span className="pin-label">⌖ 관심 강좌</span>
+                      <h2>{p.title}</h2>
+                      <p className="muted">
+                        아직 수강신청이 열리지 않았습니다. 개설되면 알림함에서
+                        확인할 수 있어요.
+                      </p>
+                      <Link className="quiet" to={`/proposals/${p.id}`}>
+                        {p.status === "VOTING" ? "일정 투표 확인" : "수업 확인"}{" "}
+                        →
+                      </Link>
                     </article>
-                  );
-                })}
+                  ))}
+                {[...courses.items]
+                  .sort(
+                    (a, b) =>
+                      Number(interests.items.some((p) => p.id === b.id)) -
+                      Number(interests.items.some((p) => p.id === a.id)),
+                  )
+                  .map((c) => {
+                    const enrolled = enrollments.items.find(
+                      (e) => e.proposalId === c.id,
+                    );
+                    return (
+                      <article
+                        className={`panel enrollment-card ${enrolled ? "enrolled" : ""}`}
+                        key={c.id}
+                      >
+                        <div className="course-title">
+                          <span className="category-icon">
+                            <Icon
+                              name={c.category === "IT" ? "code" : "calendar"}
+                            />
+                          </span>
+                          <div>
+                            <div className="card-meta">
+                              {interests.items.some((p) => p.id === c.id) && (
+                                <span className="pin-label">⌖ 관심 강좌</span>
+                              )}
+                              <span className="tag navy">수강신청</span>
+                              <Tag status={c.status} />
+                            </div>
+                            <h2>{c.title}</h2>
+                            <p className="muted">
+                              {c.courseTime || "시간 확인 필요"} ·{" "}
+                              {c.targetGrades?.join("~")}학년
+                            </p>
+                          </div>
+                        </div>
+                        <div className="course-capacity">
+                          <span>
+                            {c.enrollmentCount || 0}/{c.capacity}명
+                          </span>
+                          <Progress
+                            value={c.enrollmentCount || 0}
+                            max={c.capacity}
+                          />
+                        </div>
+                        <button
+                          className={enrolled ? "danger-outline" : ""}
+                          disabled={
+                            busy !== null ||
+                            (!enrolled && c.canEnroll === false)
+                          }
+                          onClick={() => act(c, enrolled)}
+                        >
+                          {busy === c.id
+                            ? "처리 중…"
+                            : enrolled
+                              ? "신청 취소"
+                              : c.canEnroll === false
+                                ? "신청 불가"
+                                : "신청"}
+                        </button>
+                      </article>
+                    );
+                  })}
                 {!courses.items.length && (
                   <p className="empty">수강신청 가능한 수업이 없습니다.</p>
                 )}
@@ -121,6 +159,9 @@ export function Enrollments() {
                       {demoMode ? "/2" : ""}
                     </b>
                   </div>
+                  {demoMode && (
+                    <Progress value={enrollments.items.length} max={2} />
+                  )}
                   <div className="my-timetable">
                     {enrollments.items.length ? (
                       enrollments.items.map((e) => (

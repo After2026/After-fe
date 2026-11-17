@@ -2290,3 +2290,114 @@ footer > span {
     transition: none !important;
   }
 }
+/* Focused layout fixes: keep the existing design and avoid duplicate logo space. */
+.auth-shell:has(.login-layout) .mode-banner {
+  position: absolute;
+  bottom: 8px;
+  left: 0;
+  right: 0;
+  background: transparent;
+  z-index: 1;
+  pointer-events: none;
+}
+.auth-shell:has(.login-layout) {
+  position: relative;
+  padding-bottom: 25px;
+}
+.login-story {
+  padding-top: 28px;
+}
+.notification-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+}
+.notification-bell > span {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: #d44b39;
+  color: white;
+  font-size: 9px;
+  border: 1px solid white;
+}
+.notification-item {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+}
+.notification-item.unread {
+  border-left: 3px solid var(--primary);
+}
+.notification-item h2 {
+  margin-top: 12px;
+  margin-bottom: 7px;
+}
+.notification-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pin-heading {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin: 0 0 14px;
+  font-size: 11px;
+  color: #486399;
+}
+.pin-heading > span {
+  color: #8a97ac;
+  font-size: 10px;
+}
+.pin-label {
+  font-size: 9px;
+  color: #4961af;
+  white-space: nowrap;
+}
+.pinned-waiting {
+  border-color: #b9c8f1;
+}
+.pinned-waiting h2 {
+  margin: 10px 0 5px;
+}
+.course-title .card-meta {
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+@media (max-width: 700px) {
+  .login-story {
+    padding-top: 22px;
+    min-height: 210px;
+  }
+  .notification-item {
+    flex-direction: column;
+    gap: 15px;
+  }
+  .notification-actions {
+    flex-direction: row;
+    width: 100%;
+  }
+  .notification-actions > * {
+    flex: 1;
+  }
+  .pin-heading {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+  .pinned-waiting .quiet {
+    font-size: 10px;
+  }
+}

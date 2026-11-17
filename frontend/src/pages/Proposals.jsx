@@ -81,7 +81,7 @@ export function Home() {
           </div>
           <div>
             <small>일정 투표</small>
-            <Link to="/votes">
+            <Link to="/my">
               {summary.data?.[1].items.length ?? "—"}개 진행중 →
             </Link>
           </div>
@@ -662,6 +662,7 @@ export function NewProposal() {
   );
 }
 export function My() {
+  const votes = useResource(() => service.list({ status: "VOTING" }));
   const r = useResource(() =>
     Promise.all([service.myInterests(), service.myProposals()]),
   );
@@ -673,6 +674,22 @@ export function My() {
           <h1>내 수업</h1>
         </div>
       </div>
+      <section className="my-section">
+        <h2>일정 투표할 수업</h2>
+        <Resource resource={votes}>
+          {(data) =>
+            data.items.length ? (
+              <div className="cards">
+                {data.items.map((p) => (
+                  <Card key={p.id} p={p} />
+                ))}
+              </div>
+            ) : (
+              <p className="empty">진행 중인 일정 투표가 없습니다.</p>
+            )
+          }
+        </Resource>
+      </section>
       <Resource resource={r}>
         {([interests, proposals]) => (
           <>

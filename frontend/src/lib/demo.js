@@ -131,6 +131,8 @@ export function createDemo(
   }
   function save(s) {
     storage.setItem(KEY, JSON.stringify(s));
+    if (typeof window !== "undefined")
+      window.dispatchEvent(new Event("after:data-change"));
   }
   function find(s, id) {
     const p = s.proposals.find((p) => p.id === Number(id));
@@ -155,25 +157,82 @@ export function createDemo(
       responses: s.votes[p.id] || [],
     };
   }
+  function syncNotifications() {
+    const s = load();
+    s.notifications ||= [];
+    s.notifiedOpenings ||= {};
+    for (const p of s.proposals) {
+      if (
+        s.interests[p.id] &&
+        ["CONFIRMED", "ENROLLING", "RUNNING"].includes(p.status) &&
+        !s.notifiedOpenings[p.id]
+      ) {
+        s.notifications.unshift({
+          id: `course-open-${p.id}`,
+          proposalId: p.id,
+          title: "관심 수업이 개설되었습니다",
+          message: `${p.title} 수업이 개설되었습니다. 수강신청 상태를 확인해 주세요.`,
+          read: false,
+          createdAt: new Date().toISOString(),
+        });
+        s.notifiedOpenings[p.id] = true;
+      }
+    }
+    // Avoid emitting another refresh event while an alert refresh is running.
+    storage.setItem(KEY, JSON.stringify(s));
+    return s;
+  }
   return {
+    notifications: async ({ cursor } = {}) => {
+      const s = syncNotifications(),
+        start = Number(cursor || 0);
+      return {
+        items: s.notifications.slice(start, start + 20),
+        nextCursor:
+          s.notifications.length > start + 20 ? String(start + 20) : null,
+      };
+    },
+    unreadCount: async () => ({
+      count: syncNotifications().notifications.filter((n) => !n.read).length,
+    }),
+    readNotification: async (id) => {
+      const s = syncNotifications(),
+        n = s.notifications.find((n) => String(n.id) === String(id));
+      if (n) n.read = true;
+      save(s);
+    },
+    readAllNotifications: async () => {
+      const s = syncNotifications();
+      s.notifications.forEach((n) => (n.read = true));
+      save(s);
+    },
     usernameCheck: async (username) => ({ available: username !== "junho07" }),
     signup: async () => {
       throw new Error(
         "체험 모드에서는 가입 신청을 서버에 전송하지 않습니다. 실제 API 모드에서 이용해 주세요.",
       );
     },
-    courses: async () => ({
-      items: load()
-        .proposals.filter((p) => ["ENROLLING", "CONFIRMED"].includes(p.status))
-        .map((p) => ({
-          ...p,
-          capacity: 20,
-          enrollmentCount: p.id === 2 ? 14 : 9,
-          canEnroll: p.status === "ENROLLING",
-          enrollmentDeadline: deadline(),
-          courseTime: p.id === 2 ? "수요일 8교시" : "화요일 9교시",
-        })),
-    }),
+    courses: async () => {
+      const s = load();
+      return {
+        items: s.proposals
+          .filter((p) => ["ENROLLING", "CONFIRMED"].includes(p.status))
+          .map((p) => {
+            const capacity = p.capacity || 20;
+            const enrollmentCount =
+              (p.enrollmentCount ?? 9) +
+              (s.enrollments || []).filter((e) => e.proposalId === p.id).length;
+            return {
+              ...p,
+              capacity,
+              enrollmentCount,
+              canEnroll: p.status === "ENROLLING" && enrollmentCount < capacity,
+              enrollmentDeadline: p.enrollmentDeadline || deadline(),
+              courseTime: p.courseTime || "화요일 방과후",
+            };
+          }),
+      };
+    },
     enrollments: async () => ({ items: load().enrollments || [] }),
     enroll: async (proposalId) => {
       const s = load(),
@@ -181,6 +240,12 @@ export function createDemo(
       if (p.status !== "ENROLLING")
         throw new Error("수강신청 가능한 수업이 아닙니다.");
       s.enrollments ||= [];
+      if (
+        (p.enrollmentCount ?? 9) +
+          s.enrollments.filter((e) => e.proposalId === p.id).length >=
+        (p.capacity || 20)
+      )
+        throw new Error("정원이 마감되었습니다.");
       if (s.enrollments.some((e) => e.proposalId === Number(proposalId)))
         throw new Error("이미 신청한 수업입니다.");
       if (s.enrollments.length >= 2)

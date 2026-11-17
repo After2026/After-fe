@@ -126,11 +126,46 @@ test("review validates required reasons and approved survey deadline", async () 
   assert.equal((await api.detail(1)).threshold, 12);
 });
 
-test('demo opens logged out and starts only through explicit entry, then logout persists',async()=>{
-  const storage=memory(),session=memory(),api=createDemo(storage,session);
-  await assert.rejects(api.me(),e=>e.status===401);
+test("demo opens logged out and starts only through explicit entry, then logout persists", async () => {
+  const storage = memory(),
+    session = memory(),
+    api = createDemo(storage, session);
+  await assert.rejects(api.me(), (e) => e.status === 401);
   await api.startDemo();
-  assert.equal((await createDemo(storage,session).me()).role,'STUDENT');
+  assert.equal((await createDemo(storage, session).me()).role, "STUDENT");
   await api.logout();
-  await assert.rejects(createDemo(storage,session).me(),e=>e.status===401);
+  await assert.rejects(
+    createDemo(storage, session).me(),
+    (e) => e.status === 401,
+  );
+});
+
+test("course counts and progress source grow after enrollment and shrink after cancellation", async () => {
+  const api = createDemo(memory());
+  const before = (await api.courses()).items.find((c) => c.id === 4);
+  const enrollment = await api.enroll(4);
+  const after = (await api.courses()).items.find((c) => c.id === 4);
+  assert.equal(after.enrollmentCount, before.enrollmentCount + 1);
+  assert.equal((await api.enrollments()).items.length, 1);
+  await api.cancelEnrollment(enrollment.id);
+  assert.equal(
+    (await api.courses()).items.find((c) => c.id === 4).enrollmentCount,
+    before.enrollmentCount,
+  );
+});
+test("opening an interested class creates one persistent notification with read state", async () => {
+  const storage = memory(),
+    api = createDemo(storage);
+  await api.interest(1, { intentLevel: 2, comment: "" });
+  assert.equal((await api.unreadCount()).count, 0);
+  const state = JSON.parse(storage.getItem("after.voting.v1"));
+  state.proposals.find((p) => p.id === 1).status = "CONFIRMED";
+  storage.setItem("after.voting.v1", JSON.stringify(state));
+  assert.equal((await api.unreadCount()).count, 1);
+  const alerts = await createDemo(storage).notifications();
+  assert.equal(alerts.items[0].proposalId, 1);
+  assert.equal((await api.notifications()).items.length, 1);
+  await api.readNotification(alerts.items[0].id);
+  assert.equal((await api.unreadCount()).count, 0);
+  assert.equal((await createDemo(storage).notifications()).items[0].read, true);
 });
