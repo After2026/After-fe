@@ -188,14 +188,15 @@
   white-space: nowrap;
 }
 .signup-shell {
-  position: relative;
   min-height: 100vh;
 }
 .signup-shell .header-inner {
   max-width: 1120px;
 }
 .signup-shell .bandi-guide {
-  position: absolute;
+  position: static;
+  justify-content: flex-end;
+  padding: 0 28px 24px;
 }
 .signup-shell .account > a {
   display: flex;
@@ -576,7 +577,7 @@
 .signup-page {
   max-width: 1120px;
   margin: 0 auto;
-  padding: 48px 24px 80px;
+  padding: 48px 24px 24px;
 }
 .signup-layout {
   display: flex;
