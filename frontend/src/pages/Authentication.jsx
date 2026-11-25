@@ -55,7 +55,9 @@ export function Welcome() {
     <section className="welcome-layout">
       <div className="welcome-copy">
         <span className="welcome-status">
-          {demoMode ? "2026학년도 2학기 · 제안 접수 중" : "우리가 만드는 방과후"}
+          {demoMode
+            ? "2026학년도 2학기 · 제안 접수 중"
+            : "우리가 만드는 방과후"}
         </span>
         <h1>
           <span>After</span>에<br />
@@ -67,7 +69,7 @@ export function Welcome() {
         </p>
         <AfterSteps steps={welcomeSteps} />
         <div className="welcome-actions">
-          <Link className="button" to="/signup">
+          <Link className="button" to="/login">
             시작하기
           </Link>
           {demoMode ? (
@@ -162,6 +164,7 @@ export function Login() {
                   name="password"
                   type={visible ? "text" : "password"}
                   autoComplete="current-password"
+                  aria-invalid={error?.status === 401 || undefined}
                   required
                   placeholder="비밀번호 입력"
                 />
@@ -236,6 +239,8 @@ export function Signup() {
       setError(e);
     }
   }
+  const usernameUnavailable =
+    usernameCheck?.username === username && !usernameCheck.available;
   const checkMessage =
     usernameCheck?.username === username
       ? usernameCheck.available
@@ -346,6 +351,7 @@ export function Signup() {
                     name="username"
                     id="signup-username"
                     autoComplete="username"
+                    aria-invalid={usernameUnavailable || undefined}
                     value={username}
                     onChange={(e) => {
                       setUsername(e.target.value);
@@ -366,7 +372,12 @@ export function Signup() {
                 </div>
               </div>
               {checkMessage && (
-                <p className="muted" role="status">
+                <p
+                  className={
+                    usernameUnavailable ? "field-invalid" : "field-valid"
+                  }
+                  role="status"
+                >
                   {checkMessage}
                 </p>
               )}

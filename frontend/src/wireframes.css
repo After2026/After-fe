@@ -1,4 +1,4 @@
-/* Layout and light theme from the supplied After desktop HTML exports. */
+/* Layout and dark theme from the supplied After desktop HTML exports. */
 @font-face {
   font-family: "Pretendard Variable";
   src: url("./assets/pretendard-variable.woff2") format("woff2");
@@ -7,26 +7,41 @@
 }
 
 :root {
-  --surface: #fff;
-  --bg: #f3f4f5;
-  --track: #f3f4f5;
-  --line: #dcdee3;
-  --line-strong: #b0b3ba;
-  --ink: #1a1c20;
-  --ink-2: #555d6d;
-  --ink-3: #868b94;
-  --primary: #2350c8;
-  --primary-hover: #163a99;
-  --primary-weak: #e6edfc;
-  --primary-text: #1d44ad;
-  --primary-line: #8eaaeb;
-  --neutral-solid: #2a3038;
-  --accent: #c25a12;
-  --success: #1f7a4d;
-  --success-weak: #edfaf6;
-  --success-text: #075445;
-  --danger: #b42318;
-  --danger-text: #921708;
+  --bg: #000000;
+  --surface: #16171b;
+  --track: #2b2e35;
+  --line: #393d46;
+  --line-strong: #727885;
+  --ink: #f3f4f5;
+  --ink-2: #dcdee3;
+  --ink-3: #b0b3ba;
+  --primary: #7096f2;
+  --primary-hover: #97b3f6;
+  --on-primary: #0b1a3d;
+  --primary-weak: #1a2c55;
+  --primary-text: #b4c9f8;
+  --primary-line: #3e5fae;
+  --neutral-solid: #f3f4f5;
+  --on-neutral-solid: #16171b;
+  --accent: #f0904f;
+  --accent-weak: #3a2414;
+  --accent-text: #ffbe90;
+  --success: #22b27f;
+  --success-weak: #202926;
+  --success-text: #93e5c0;
+  --danger: #ff6e60;
+  --danger-weak: #322323;
+  --danger-text: #f8c5c3;
+  --heat-0: #1a2433;
+  --heat-1: #22386b;
+  --heat-2: #2f51a3;
+  --heat-3: #5c83e6;
+  --heat-4: #a9c1f7;
+  --on-heat: #0b1a3d;
+  --shadow-floating: 0 8px 24px rgba(0, 0, 0, 0.6);
+  color-scheme: dark;
+  --field-surface: #383838;
+  --navy: var(--primary-weak);
   --r1: 4px;
   --r2: 8px;
   --r3: 12px;
@@ -87,6 +102,7 @@
   flex: none;
   border-radius: var(--r2);
   box-shadow: none;
+  color: #fff;
 }
 .brand-login {
   gap: 12px;
@@ -171,8 +187,15 @@
 .auth-shell .account > a {
   white-space: nowrap;
 }
+.signup-shell {
+  position: relative;
+  min-height: 100vh;
+}
 .signup-shell .header-inner {
   max-width: 1120px;
+}
+.signup-shell .bandi-guide {
+  position: absolute;
 }
 .signup-shell .account > a {
   display: flex;
@@ -183,19 +206,6 @@
 }
 
 .welcome-shell {
-  /* Dark palette from the supplied Welcome HTML and reference screenshot. */
-  --surface: #16171b;
-  --track: #2b2e35;
-  --ink: #f3f4f5;
-  --ink-2: #dcdee3;
-  --line: #393d46;
-  --primary: #7096f2;
-  --primary-hover: #97b3f6;
-  --primary-weak: #1a2c55;
-  --primary-text: #b4c9f8;
-  --on-primary: #0b1a3d;
-  color: var(--ink);
-  color-scheme: dark;
   background: var(--surface);
   min-height: max(900px, 100vh);
 }
@@ -214,7 +224,6 @@
   font-weight: 600;
 }
 .welcome-shell .account .button {
-  color: var(--on-primary);
   padding-inline: 18px;
   border-radius: var(--r2);
 }
@@ -285,7 +294,7 @@
   width: 28px;
   height: 28px;
   border-radius: var(--full);
-  color: white;
+  color: var(--on-primary);
   background: var(--primary);
   font-size: 14px;
   font-weight: 700;
@@ -314,7 +323,6 @@
   font-size: 16px;
 }
 .welcome-actions .button:not(.quiet) {
-  color: var(--on-primary);
   padding: 0 28px;
   font-size: 17px;
   font-weight: 700;
@@ -626,7 +634,19 @@
 .signup-steps [aria-current="step"] > span {
   background: var(--primary);
   border-color: var(--primary);
-  color: white;
+  color: var(--on-primary);
+}
+.login-form .field input[aria-invalid="true"],
+.signup-layout .field input[aria-invalid="true"] {
+  border-color: var(--danger);
+}
+.signup-layout .field-invalid {
+  color: var(--danger-text);
+  margin: 0;
+}
+.signup-layout .field-valid {
+  color: var(--success-text);
+  margin: 0;
 }
 .signup-steps .info {
   margin: 0;
@@ -677,6 +697,9 @@
   border-radius: var(--r3);
   color: var(--ink);
   font-size: 16px;
+}
+.signup-layout .field select {
+  background: var(--surface);
 }
 .signup-layout .form-row {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
@@ -955,7 +978,7 @@
   background: var(--primary-weak);
 }
 .listing-page .tag.VOTING {
-  color: var(--surface);
+  color: var(--on-neutral-solid);
   background: var(--neutral-solid);
 }
 .listing-page .tag:is(.CONFIRMED, .ENROLLING) {
@@ -1035,7 +1058,7 @@
   border-radius: 14px 14px 4px 14px;
   background: var(--surface);
   color: var(--ink);
-  box-shadow: 0 6px 20px #14202e1f;
+  box-shadow: var(--shadow-floating);
   font-size: 14px;
   line-height: 20px;
   font-weight: 600;
@@ -1322,10 +1345,10 @@
   border-radius: 16px;
   background: var(--surface);
   padding: 28px;
-  box-shadow: 0 8px 24px #0004;
+  box-shadow: var(--shadow-floating);
 }
 .interest-dialog::backdrop {
-  background: #1a1c205e;
+  background: rgb(0 0 0 / 60%);
 }
 .interest-dialog > h2 {
   font-size: 22px;
@@ -1380,6 +1403,7 @@
 }
 .vote-heading-meta .tag {
   padding: 3px 9px;
+  color: var(--on-neutral-solid);
   background: var(--neutral-solid);
   font-size: 12px;
 }
@@ -1420,7 +1444,7 @@
   background: repeating-linear-gradient(
     135deg,
     var(--primary-weak) 0 4px,
-    #c9d7f6 4px 8px
+    var(--heat-1) 4px 8px
   );
 }
 .vote-board .legend.unavailable {
@@ -1555,6 +1579,16 @@
   min-height: 44px;
   font-size: 14px;
 }
+.admin-sidebar > .brand {
+  display: inline-flex;
+  padding: 0;
+  margin-bottom: 16px;
+}
+.proposal-editor .chip.active {
+  background: var(--neutral-solid);
+  color: var(--on-neutral-solid);
+  border-color: var(--neutral-solid);
+}
 .admin-shell .review-layout {
   gap: 24px;
 }
@@ -1570,6 +1604,9 @@
 }
 
 @media (max-width: 700px) {
+  .admin-sidebar > .brand {
+    margin: 0;
+  }
   .detail-main,
   .editor-layout > form > .panel,
   .vote-board,

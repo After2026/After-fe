@@ -6,6 +6,7 @@ import {
   useResource,
   ErrorBox,
   Icon,
+  Logo,
   Progress,
   Auth,
   Tag,
@@ -210,12 +211,15 @@ export function Admin() {
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
+        <Logo kind="compact" />
         <h2>방과후 관리</h2>
         <p className="muted">{user?.name}</p>
         <Link className="admin-selected" to="/admin" aria-current="page">
           제안 검토
         </Link>
-        <Link to="/enrollments">개설 · 신청 확인</Link>
+        <Link className="admin-enroll-link" to="/enrollments">
+          개설 · 신청 확인
+        </Link>
         <Link to="/">학생 화면으로</Link>
         {demoMode && (
           <p>

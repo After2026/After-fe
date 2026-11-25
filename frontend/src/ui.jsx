@@ -94,7 +94,7 @@ export function Logo({ kind = "standard" }) {
       )}
       <span className="brand-text">
         <strong>After</strong>
-        <span>우리가 만드는 방과후</span>
+        {kind !== "compact" && <span>우리가 만드는 방과후</span>}
       </span>
     </Link>
   );

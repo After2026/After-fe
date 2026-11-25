@@ -38,7 +38,6 @@ export function seed() {
         slots: [
           { id: 1, day: "월요일", period: 8 },
           { id: 2, day: "수요일", period: 8 },
-          { id: 3, day: "금요일", period: 9 },
         ],
       },
       {
@@ -122,6 +121,16 @@ export function createDemo(
       const s = JSON.parse(raw);
       if (!Array.isArray(s.proposals) || !s.interests || !s.votes)
         throw Error();
+      // Older demo saves included a Friday candidate on the sample poll.
+      const samplePoll = s.proposals.find(({ id }) => id === 2);
+      if (
+        samplePoll?.slots?.some(({ id, day }) => id === 3 && day === "금요일")
+      ) {
+        samplePoll.slots = samplePoll.slots.filter(({ id }) => id !== 3);
+        if (Array.isArray(s.votes[2])) {
+          s.votes[2] = s.votes[2].filter(({ slotId }) => slotId !== 3);
+        }
+      }
       return s;
     } catch {
       throw new Error(

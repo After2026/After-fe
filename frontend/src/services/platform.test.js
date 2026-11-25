@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createDemo } from "../lib/demo.js";
+import { createDemo, seed } from "../lib/demo.js";
 import { createClient } from "../lib/api.js";
 function memory() {
   const s = new Map();
@@ -21,7 +21,7 @@ test("interest eligibility, voting all slots and replacement survive reload", as
       responses: [{ slotId: 1, availability: "AVAILABLE" }],
     }),
   );
-  const responses = [1, 2, 3].map((slotId) => ({
+  const responses = [1, 2].map((slotId) => ({
     slotId,
     availability: "AVAILABLE",
   }));
@@ -33,17 +33,26 @@ test("interest eligibility, voting all slots and replacement survive reload", as
   assert.equal(result.totalRespondents, 1);
   assert.equal(result.slots[0].availableCount, 0);
   assert.equal(result.slots[0].unavailableCount, 1);
-  assert.equal((await reloaded.vote(2)).responses.length, 3);
+  assert.equal((await reloaded.vote(2)).responses.length, 2);
 });
 test("ineligible, expired and duplicate-slot ballots rejected", async () => {
   const storage = memory(),
     api = createDemo(storage);
   await api.submitVote(2, {
-    responses: [1, 2, 3].map((slotId) => ({
+    responses: [1, 2].map((slotId) => ({
       slotId,
       availability: "ADJUSTABLE",
     })),
   });
+  await assert.rejects(
+    api.submitVote(2, {
+      responses: [1, 1].map((slotId) => ({
+        slotId,
+        availability: "AVAILABLE",
+      })),
+    }),
+    /모든 후보 시간/,
+  );
   const state = JSON.parse(storage.getItem("after.voting.v1"));
   state.interests[2] = { intentLevel: 3 };
   storage.setItem("after.voting.v1", JSON.stringify(state));
@@ -53,11 +62,43 @@ test("ineligible, expired and duplicate-slot ballots rejected", async () => {
   storage.setItem("after.voting.v1", JSON.stringify(state));
   await assert.rejects(
     api.submitVote(2, {
-      responses: [1, 2, 3].map((slotId) => ({
+      responses: [1, 2].map((slotId) => ({
         slotId,
         availability: "AVAILABLE",
       })),
     }),
+  );
+});
+test("older demo votes keep Monday and Wednesday after Friday is removed", async () => {
+  const storage = memory();
+  const state = seed();
+  state.proposals
+    .find(({ id }) => id === 2)
+    .slots.push({ id: 3, day: "금요일", period: 9 });
+  state.votes[2] = [
+    { slotId: 1, availability: "AVAILABLE" },
+    { slotId: 2, availability: "ADJUSTABLE" },
+    { slotId: 3, availability: "UNAVAILABLE" },
+  ];
+  storage.setItem("after.voting.v1", JSON.stringify(state));
+
+  const api = createDemo(storage);
+  const vote = await api.vote(2);
+  assert.deepEqual(
+    vote.slots.map(({ day }) => day),
+    ["월요일", "수요일"],
+  );
+  assert.deepEqual(vote.responses, state.votes[2].slice(0, 2));
+  const result = await api.result(2);
+  assert.equal(result.totalRespondents, 1);
+  assert.deepEqual(
+    result.slots.map(({ day }) => day),
+    ["월요일", "수요일"],
+  );
+  await api.submitVote(2, { responses: vote.responses });
+  assert.deepEqual(
+    (await createDemo(storage).vote(2)).responses,
+    vote.responses,
   );
 });
 test("cookie auth refreshes expired token and retries exact vote body", async () => {
