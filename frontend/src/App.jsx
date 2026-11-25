@@ -1,5 +1,6 @@
 import { useState, useEffect, useContext } from "react";
 import { Link, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import BandiGuide from "./BandiGuide";
 import { service, demoMode } from "./lib/service";
 import { Auth, ErrorBox, Logo, Icon } from "./ui";
 import { Home, Detail, NewProposal, My, Guide } from "./pages/Proposals";
@@ -92,22 +93,26 @@ export default function App() {
   return (
     <Auth.Provider value={{ user, loading, reload }}>
       <div
-        className={`app-shell ${authPage ? "auth-shell" : ""} ${adminPage ? "admin-shell" : ""}`}
+        className={`app-shell ${authPage ? "auth-shell" : ""} ${adminPage ? "admin-shell" : ""} ${welcomePage ? "welcome-shell" : ""} ${location.pathname === "/signup" ? "signup-shell" : ""}`}
       >
         {!adminPage && location.pathname !== "/login" && (
           <header className="site-header">
             <div className="header-inner">
-              <Logo />
+              <Logo kind={welcomePage ? "wordmark" : undefined} />
               {!authPage && user && <StudentNav />}
               <div className="account">
                 {!authPage && user && <NotificationsBell />}
                 {!authPage && user ? (
                   <>
                     <Link className="profile" to="/my">
-                      <span>
-                        <Icon name="user" size={13} />
+                      <span aria-hidden="true">
+                        {user.name?.[0] || <Icon name="user" size={16} />}
                       </span>
-                      {user.name}
+                      <span className="profile-label">
+                        {user.grade && user.classNumber
+                          ? `${user.grade}학년 ${user.classNumber}반`
+                          : user.name}
+                      </span>
                     </Link>
                     <button className="quiet" onClick={logout}>
                       로그아웃
@@ -126,11 +131,6 @@ export default function App() {
               </div>
             </div>
           </header>
-        )}
-        {demoMode && !authPage && user && (
-          <div className="mode-banner">
-            체험 모드 · 예시 데이터 / 내 응답은 이 브라우저에만 저장됩니다.
-          </div>
         )}
         <main className={authPage ? "auth-main" : ""}>
           {error && <ErrorBox error={error} retry={reload} />}
@@ -226,11 +226,16 @@ export default function App() {
             />
           </Routes>
         </main>
+        <BandiGuide welcome={welcomePage} user={user} />
         {!authPage && !adminPage && user && (
           <>
             <StudentNav mobile />
             <footer>
-              <span>우리가 만드는 방과후</span>
+              <span>
+                {demoMode
+                  ? "체험 모드 · 응답은 이 브라우저에 저장됩니다."
+                  : "우리가 만드는 방과후"}
+              </span>
               <Link to="/guide">이용 안내</Link>
               {(demoMode || ["ADMIN", "SUPER_ADMIN"].includes(user?.role)) && (
                 <Link to="/admin">관리자 검토{demoMode ? " 체험" : ""}</Link>

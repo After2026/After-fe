@@ -2,22 +2,32 @@ import { useState, useContext } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { service, demoMode } from "../lib/service";
 import { Auth, Logo, ErrorBox, Icon } from "../ui";
-import bandi from "../assets/bandi.svg";
-import bandiWave from "../assets/bandi-wave.svg";
+import WelcomeBandi from "../WelcomeBandi";
 
-const steps = [
-  ["수업 제안", "배우고 싶은 수업을 친구들과 제안해요."],
-  ["관심 표시", "듣고 싶은 수업에 참여 의향을 남겨요."],
-  ["일정 투표", "친구들과 함께할 수 있는 시간을 정해요."],
+const welcomeSteps = [
+  ["제안", "친구 5명과 듣고 싶은 수업을 올려요"],
+  ["관심 표시", "전교생이 수요조사에 참여해요"],
+  ["일정 투표 · 수강신청", "함께 요일을 정하고 신청해요"],
 ];
 
-function AfterSteps() {
+const loginSteps = [
+  ["제안", "친구 5명과 함께 원하는 수업을 제안해요."],
+  ["관심 표시", "전교생이 수요조사에 참여해 개설 여부를 미리 판단해요."],
+  ["일정 투표", "함께 들을 친구들이 가능한 요일을 정해요."],
+];
+
+function AfterSteps({ steps }) {
   return (
     <ol className="after-steps">
-      {steps.map(([title, description]) => (
+      {steps.map(([title, description], index) => (
         <li key={title}>
-          <b>{title}</b>
-          <span>{description}</span>
+          <span className="after-step-number" aria-hidden="true">
+            {index + 1}
+          </span>
+          <span className="after-step-copy">
+            <b>{title}</b>
+            <span>{description}</span>
+          </span>
         </li>
       ))}
     </ol>
@@ -44,15 +54,18 @@ export function Welcome() {
   return (
     <section className="welcome-layout">
       <div className="welcome-copy">
+        <span className="welcome-status">
+          {demoMode ? "체험 모드 · 제안 둘러보기" : "우리가 만드는 방과후"}
+        </span>
         <h1>
           <span>After</span>에<br />
           오신 걸 환영해요
         </h1>
         <p>
-          듣고 싶은 수업을 제안하고, 관심을 모아 친구들과 방과후 수업을 함께
-          열어요.
+          듣고 싶은 수업이 없나요? 직접 제안하고, 관심을 모으고, 친구들과 요일을
+          정해 방과후 수업을 함께 열어요.
         </p>
-        <AfterSteps />
+        <AfterSteps steps={welcomeSteps} />
         <div className="welcome-actions">
           <Link className="button" to="/signup">
             시작하기
@@ -67,14 +80,9 @@ export function Welcome() {
             </Link>
           )}
         </div>
-        {demoMode && (
-          <small className="muted">제안 보기는 체험 모드로 열립니다.</small>
-        )}
         {error && <ErrorBox error={error} />}
       </div>
-      <div className="welcome-bandi">
-        <img src={bandiWave} alt="손을 흔드는 After의 캐릭터 반디" />
-      </div>
+      <WelcomeBandi />
     </section>
   );
 }
@@ -85,7 +93,8 @@ export function Login() {
   const destination = useLocation().state?.from || "/";
   const [error, setError] = useState(null),
     [busy, setBusy] = useState(false),
-    [visible, setVisible] = useState(false);
+    [visible, setVisible] = useState(false),
+    [recovery, setRecovery] = useState(false);
   async function submit(e) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
@@ -121,82 +130,89 @@ export function Login() {
   return (
     <div className="login-layout">
       <section className="login-story">
-        <Logo />
-        <div>
+        <Logo kind="login" />
+        <div className="login-story-copy">
           <h1>
             듣고 싶은 수업,
             <br />
             이제 직접 열어요.
           </h1>
-          <AfterSteps />
+          <AfterSteps steps={loginSteps} />
         </div>
-        <small>방과후 수업 제안 플랫폼</small>
+        <small>방과후학교</small>
       </section>
       <section className="login-form">
-        <h2>로그인</h2>
-        {demoMode && (
-          <p className="info">
-            체험 모드에서는 계정 없이 참여할 수 있어요. 학교 계정 로그인은 실제
-            서비스에서 이용할 수 있습니다.
-          </p>
-        )}
-        <form onSubmit={submit}>
-          <label className="field">
-            아이디
-            <input
-              name="username"
-              autoComplete="username"
-              required
-              placeholder="아이디 입력"
-            />
-          </label>
-          <div className="field">
-            <label htmlFor="login-password">비밀번호</label>
-            <div className="password-input">
+        <div className="login-form-content">
+          <h2>로그인</h2>
+          <form onSubmit={submit}>
+            <label className="field">
+              아이디
               <input
-                id="login-password"
-                name="password"
-                type={visible ? "text" : "password"}
-                autoComplete="current-password"
+                name="username"
+                autoComplete="username"
                 required
-                placeholder="비밀번호 입력"
+                placeholder="아이디 입력"
               />
-              <button
-                type="button"
-                className="icon-button"
-                onClick={() => setVisible(!visible)}
-                aria-pressed={visible}
-                aria-label={visible ? "비밀번호 숨기기" : "비밀번호 보기"}
-              >
-                <Icon name="eye" size={18} />
-              </button>
+            </label>
+            <div className="field">
+              <label htmlFor="login-password">비밀번호</label>
+              <div className="password-input">
+                <input
+                  id="login-password"
+                  name="password"
+                  type={visible ? "text" : "password"}
+                  autoComplete="current-password"
+                  required
+                  placeholder="비밀번호 입력"
+                />
+                <button
+                  type="button"
+                  className="icon-button"
+                  onClick={() => setVisible(!visible)}
+                  aria-pressed={visible}
+                  aria-label={visible ? "비밀번호 숨기기" : "비밀번호 보기"}
+                >
+                  <Icon name="eye" size={20} />
+                </button>
+              </div>
             </div>
-          </div>
-          {error && <ErrorBox error={error} />}
-          <label className="choice">
-            <input name="rememberMe" type="checkbox" />
-            로그인 상태 유지
-          </label>
-          <button className="block" disabled={busy}>
-            {busy ? "로그인 중…" : "로그인"}
-          </button>
+            {error && <ErrorBox error={error} />}
+            <label className="choice">
+              <input name="rememberMe" type="checkbox" />
+              로그인 상태 유지
+            </label>
+            <button className="block" disabled={busy}>
+              {busy ? "로그인 중…" : "로그인"}
+            </button>
+          </form>
           <div className="auth-links">
-            <Link to="/guide">이용 안내</Link>
-            <span>|</span>
+            <button
+              type="button"
+              className="icon-button"
+              aria-expanded={recovery}
+              onClick={() => setRecovery(!recovery)}
+            >
+              비밀번호 찾기
+            </button>
+            <span aria-hidden="true" />
             <Link to="/signup">회원가입</Link>
           </div>
+          {recovery && (
+            <p className="info" role="status">
+              학교 계정 비밀번호 재설정은 담당 선생님에게 문의해 주세요.
+            </p>
+          )}
           {demoMode && (
             <button
               type="button"
-              className="quiet block"
+              className="quiet block demo-login"
               disabled={busy}
               onClick={startDemo}
             >
               체험 시작 (회원가입 없이)
             </button>
           )}
-        </form>
-        <img className="login-bandi" src={bandi} alt="" />
+        </div>
       </section>
     </div>
   );
@@ -264,23 +280,27 @@ export function Signup() {
   }
   return (
     <section className="signup-page">
-      <div className="page-heading">
-        <h1>회원가입</h1>
-      </div>
       <div className="signup-layout">
         <aside className="signup-steps">
+          <h1>회원가입</h1>
           <ol>
-            <li>가입 인증번호</li>
-            <li aria-current={message ? undefined : "step"}>
-              정보 입력 · 약관 동의
-            </li>
-            <li aria-current={message ? "step" : undefined}>
-              선생님 승인 대기
-            </li>
+            {["가입 인증번호", "정보 입력 · 약관 동의", "선생님 승인 대기"].map(
+              (step, index) => (
+                <li
+                  key={step}
+                  aria-current={
+                    index === (message ? 2 : 1) ? "step" : undefined
+                  }
+                >
+                  <span aria-hidden="true">{index + 1}</span>
+                  {step}
+                </li>
+              ),
+            )}
           </ol>
           <div className="info">
-            가입 인증번호는 학교에서 안내받은 코드를 입력하세요. 역할은
-            인증번호에 따라 결정됩니다.
+            가입 신청 후 담당 선생님이 학번·이름을 재학생 명부와 확인하면
+            로그인할 수 있어요. 1인 1계정만 허용돼요.
           </div>
         </aside>
         {message ? (
@@ -377,17 +397,20 @@ export function Signup() {
             </section>
             <section className="panel">
               <h2>학생 정보</h2>
-              <div className="form-row">
+              <div className="form-row signup-student-fields">
                 <label className="field">
                   이름 <span className="required">*</span>
                   <input name="name" required placeholder="홍길동" />
                 </label>
                 <label className="field">
                   학번 <span className="required">*</span>
-                  <input name="studentNumber" required placeholder="20301" />
+                  <input
+                    name="studentNumber"
+                    inputMode="numeric"
+                    required
+                    placeholder="20301"
+                  />
                 </label>
-              </div>
-              <div className="form-row">
                 <label className="field">
                   학년
                   <select name="grade">

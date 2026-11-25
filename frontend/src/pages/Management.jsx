@@ -28,7 +28,9 @@ export function Enrollments() {
     try {
       if (enrollment) await service.cancelEnrollment(enrollment.id);
       else await service.enroll(course.id);
-      setMessage(enrollment ? "수강신청을 취소했습니다." : "수강신청이 완료되었습니다.");
+      setMessage(
+        enrollment ? "수강신청을 취소했습니다." : "수강신청이 완료되었습니다.",
+      );
       r.reload();
     } catch (e) {
       setError(e);
@@ -37,7 +39,7 @@ export function Enrollments() {
     }
   }
   return (
-    <section>
+    <section className="enrollments-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">개설 확정 수업 신청</p>
@@ -53,14 +55,14 @@ export function Enrollments() {
           자격은 서버에서 확인해야 합니다.
         </p>
       )}
-      {message && <p className="success" role="status">{message}</p>}
+      {message && (
+        <p className="success" role="status">
+          {message}
+        </p>
+      )}
       <Resource resource={r}>
         {([courses, enrollments, interests]) => (
           <>
-            <section className="dark-panel enrollment-banner">
-              <b>수강신청</b>
-              <span>개설된 수업을 확인하고 신청해 주세요.</span>
-            </section>
             <div className="enrollment-layout">
               <div className="course-list">
                 <div className="pin-heading">
@@ -157,7 +159,7 @@ export function Enrollments() {
               <aside>
                 <section className="panel">
                   <div className="mini-heading">
-                    <h2>내 신청표</h2>
+                    <h2>내 신청</h2>
                     <b>
                       {enrollments.items.length}
                       {demoMode ? "/2" : ""}
@@ -251,7 +253,8 @@ export function Admin() {
                     key={p.id}
                   >
                     <small>
-                      {p.targetGrades?.join("~")}학년 · {categories[p.category] || p.category}
+                      {p.targetGrades?.join("~")}학년 ·{" "}
+                      {categories[p.category] || p.category}
                     </small>
                     <strong>{p.title}</strong>
                     <span>관심 {p.interestCount}명 · 검토 대기</span>

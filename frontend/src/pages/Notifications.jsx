@@ -62,6 +62,7 @@ export function Notifications() {
     [error, setError] = useState(null),
     [busy, setBusy] = useState(false);
   const r = useResource(() => service.notifications({ cursor }), [cursor]);
+  const interests = useResource(() => service.myInterests());
   useEffect(() => {
     const refresh = () => r.reload();
     const timer = setInterval(refresh, 30000);
@@ -86,7 +87,7 @@ export function Notifications() {
     }
   }
   return (
-    <section className="narrow">
+    <section className="notifications-page">
       <div className="page-heading">
         <div>
           <p className="eyebrow">관심 수업 소식</p>
@@ -102,75 +103,113 @@ export function Notifications() {
           실제 서버 개설 알림과 앱 종료 후 푸시는 연결되지 않았습니다.
         </p>
       )}
-      <Resource resource={r}>
-        {(data) => (
-          <>
-            {data.items.length ? (
-              data.items.map((n) => (
-                <article
-                  className={`panel notification-item ${n.read ? "" : "unread"}`}
-                  key={n.id}
-                >
-                  <div>
-                    <span className="tag">{n.read ? "읽음" : "새 알림"}</span>
-                    <h2>{n.title}</h2>
-                    <p>{n.message}</p>
-                    <small className="muted">{date(n.createdAt)}</small>
+      <div className="notifications-layout">
+        <section className="notification-feed" aria-label="알림 목록">
+          <Resource resource={r}>
+            {(data) => (
+              <>
+                {data.items.length ? (
+                  data.items.map((n) => (
+                    <article
+                      className={`panel notification-item ${n.read ? "" : "unread"}`}
+                      key={n.id}
+                    >
+                      <div>
+                        <span className="tag">
+                          {n.read ? "읽음" : "새 알림"}
+                        </span>
+                        <h2>{n.title}</h2>
+                        <p>{n.message}</p>
+                        <small className="muted">{date(n.createdAt)}</small>
+                      </div>
+                      <div className="notification-actions">
+                        {n.proposalId && (
+                          <Link
+                            className="button"
+                            to={`/proposals/${n.proposalId}`}
+                          >
+                            수업 확인
+                          </Link>
+                        )}
+                        {!n.read && (
+                          <button
+                            className="quiet"
+                            onClick={() => read(n.id)}
+                            disabled={busy}
+                          >
+                            읽음 처리
+                          </button>
+                        )}
+                      </div>
+                    </article>
+                  ))
+                ) : (
+                  <div className="panel empty">
+                    아직 알림이 없습니다. 관심을 표시한 수업이 개설되면
+                    알려드릴게요.
                   </div>
-                  <div className="notification-actions">
-                    {n.proposalId && (
-                      <Link
-                        className="button"
-                        to={`/proposals/${n.proposalId}`}
-                      >
-                        수업 확인
-                      </Link>
-                    )}
-                    {!n.read && (
-                      <button
-                        className="quiet"
-                        onClick={() => read(n.id)}
-                        disabled={busy}
-                      >
-                        읽음 처리
-                      </button>
-                    )}
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="panel empty">
-                아직 알림이 없습니다. 관심을 표시한 수업이 개설되면
-                알려드릴게요.
-              </div>
+                )}
+                <div className="form-actions">
+                  {history.length > 0 && (
+                    <button
+                      className="quiet"
+                      onClick={() => {
+                        setCursor(history.at(-1));
+                        setHistory((v) => v.slice(0, -1));
+                      }}
+                    >
+                      이전
+                    </button>
+                  )}
+                  {data.nextCursor && (
+                    <button
+                      className="quiet"
+                      onClick={() => {
+                        setHistory((v) => [...v, cursor]);
+                        setCursor(data.nextCursor);
+                      }}
+                    >
+                      다음
+                    </button>
+                  )}
+                </div>
+              </>
             )}
-            <div className="form-actions">
-              {history.length > 0 && (
-                <button
-                  className="quiet"
-                  onClick={() => {
-                    setCursor(history.at(-1));
-                    setHistory((v) => v.slice(0, -1));
-                  }}
-                >
-                  이전
-                </button>
-              )}
-              {data.nextCursor && (
-                <button
-                  className="quiet"
-                  onClick={() => {
-                    setHistory((v) => [...v, cursor]);
-                    setCursor(data.nextCursor);
-                  }}
-                >
-                  다음
-                </button>
-              )}
-            </div>
-          </>
-        )}
-      </Resource>
+          </Resource>
+        </section>
+        <aside className="notification-aside">
+          <section className="panel">
+            <h2>기다리는 강좌</h2>
+            <Resource resource={interests}>
+              {({ items }) => {
+                const waiting = items.filter(({ status }) =>
+                  ["SURVEYING", "VOTING"].includes(status),
+                );
+                return waiting.length ? (
+                  <ul>
+                    {waiting.map(({ id, title }) => (
+                      <li key={id}>
+                        <Link to={`/proposals/${id}`}>{title}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">아직 기다리는 강좌가 없습니다.</p>
+                );
+              }}
+            </Resource>
+          </section>
+          <section className="panel">
+            <h2>알림 종류</h2>
+            <p className="muted">
+              관심을 표시한 수업이 개설되면 알림함에서 확인할 수 있어요.
+            </p>
+            <Link className="button quiet" to="/my">
+              내 활동 보기
+            </Link>
+          </section>
+        </aside>
+      </div>
       {error && <ErrorBox error={error} />}
     </section>
   );

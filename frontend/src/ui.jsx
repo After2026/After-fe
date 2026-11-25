@@ -4,6 +4,13 @@ import { statuses, categories } from "./lib/service";
 export const Auth = createContext(null);
 export function Icon({ name, size = 18, ...props }) {
   const paths = {
+    heart: (
+      <path
+        fill="currentColor"
+        stroke="none"
+        d="M12 21s-7.5-4.6-9.5-9.2C1.2 8.6 3.3 5 6.8 5c2.1 0 3.6 1.1 5.2 3 1.6-1.9 3.1-3 5.2-3 3.5 0 5.6 3.6 4.3 6.8C19.5 16.4 12 21 12 21Z"
+      />
+    ),
     plus: <path d="M12 5v14M5 12h14" />,
     bulb: (
       <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3ZM9.5 18.5h5M10.5 21h3" />
@@ -77,12 +84,14 @@ export function Icon({ name, size = 18, ...props }) {
     </svg>
   );
 }
-export function Logo() {
+export function Logo({ kind = "standard" }) {
   return (
-    <Link className="brand" to="/">
-      <span className="logo-symbol">
-        <Icon name="bulb" size={21} />
-      </span>
+    <Link className={`brand brand-${kind}`} to="/">
+      {kind !== "wordmark" && (
+        <span className="logo-symbol">
+          <Icon name="bulb" size={kind === "login" ? 22 : 20} strokeWidth={2} />
+        </span>
+      )}
       <span className="brand-text">
         <strong>After</strong>
         <span>우리가 만드는 방과후</span>
@@ -189,7 +198,12 @@ export function Card({ p, listing = false, interested = false }) {
         </div>
         <div className={listing ? "card-title" : undefined}>
           <h3>{p.title}</h3>
-          {interested && <span className="interest-badge">관심 표시</span>}
+          {interested && (
+            <span className="interest-badge">
+              <Icon name="heart" size={12} />
+              관심
+            </span>
+          )}
         </div>
         <small>
           제안자 {p.proposerName}

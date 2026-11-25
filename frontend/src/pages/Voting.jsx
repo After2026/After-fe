@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import { service } from "../lib/service";
-import { Resource, useResource, ErrorBox, Icon, date, Progress } from "../ui";
+import { Resource, useResource, ErrorBox, date, Progress } from "../ui";
 const options = [
   ["AVAILABLE", "✓", "가능"],
   ["ADJUSTABLE", "△", "조정 가능"],
-  ["UNAVAILABLE", "×", "불가"],
+  ["UNAVAILABLE", "×", "불가능"],
 ];
 export function Vote() {
   const { id } = useParams(),
@@ -62,22 +62,14 @@ function VoteForm({ p, v }) {
       </Link>
       <div className="page-heading">
         <div>
-          <p className="eyebrow">후보 일정에 투표해요</p>
-          <h1>
-            <span className="desktop-vote-title">{p.title}</span>
-            <span className="mobile-vote-title">일정 투표</span>
-          </h1>
+          <div className="vote-heading-meta">
+            <span className="tag navy">일정투표중</span>
+            <span>마감 {date(v.deadline)}</span>
+          </div>
+          <h1>{p.title}</h1>
           <p className="subtitle">
-            가능한 모든 시간을 골라주세요. 기간 내에는 응답을 수정할 수
-            있습니다.
+            후보 칸을 누를 때마다 가능 → 조정 가능 → 불가능 순으로 바뀌어요.
           </p>
-        </div>
-      </div>
-      <div className="mobile-course panel">
-        <Icon name="calendar" />
-        <div>
-          <b>{p.title}</b>
-          <small>마감 {date(v.deadline)}</small>
         </div>
       </div>
       <form
@@ -87,59 +79,82 @@ function VoteForm({ p, v }) {
       >
         <div className="panel vote-board">
           <div className="vote-tools">
-            <span>
-              <i className="legend available" />
-              가능 <i className="legend adjustable" />
-              조정 가능 <i className="legend unavailable" />
-              불가
-            </span>
-            <button
-              type="button"
-              className="quiet"
-              disabled={!allowed || busy}
-              onClick={() => {
-                setAnswers(
-                  Object.fromEntries(v.slots.map((s) => [s.id, "AVAILABLE"])),
-                );
-                setSaved(false);
-              }}
-            >
-              모두 가능
-            </button>
-          </div>
-          <fieldset disabled={!allowed || busy}>
-            <legend className="sr-only">후보 시간별 참여 가능 여부</legend>
-            <div className="slots-grid">
-              {v.slots.map((s) => (
-                <fieldset className="slot" key={s.id}>
-                  <legend>
-                    {s.day}
-                    <small>후보 시간</small>
-                  </legend>
-                  <div className="slot-choices">
-                    {options.map(([value, symbol, label]) => (
-                      <label
-                        className={`availability ${answers[s.id] === value ? value : ""}`}
-                        key={value}
-                      >
-                        <input
-                          required
-                          type="radio"
-                          name={`slot-${s.id}`}
-                          checked={answers[s.id] === value}
-                          onChange={() =>
-                            setAnswers((a) => ({ ...a, [s.id]: value }))
-                          }
-                        />
-                        <strong>{symbol}</strong>
-                        <span>{label}</span>
-                      </label>
-                    ))}
-                  </div>
-                </fieldset>
-              ))}
+            <div className="vote-legend">
+              <span>
+                <i className="legend available" />
+                가능
+              </span>
+              <span>
+                <i className="legend adjustable" />
+                조정 가능
+              </span>
+              <span>
+                <i className="legend unavailable" />
+                불가능
+              </span>
             </div>
-          </fieldset>
+            <div className="vote-actions">
+              <button
+                type="button"
+                className="quiet"
+                disabled={!allowed || busy}
+                onClick={() => {
+                  setAnswers(
+                    Object.fromEntries(
+                      v.slots.map((slot) => [slot.id, "AVAILABLE"]),
+                    ),
+                  );
+                  setSaved(false);
+                }}
+              >
+                모두 가능
+              </button>
+              <button
+                type="button"
+                className="quiet"
+                disabled={!allowed || busy}
+                onClick={() => {
+                  setAnswers({});
+                  setSaved(false);
+                }}
+              >
+                처음부터
+              </button>
+            </div>
+          </div>
+          <div className="vote-grid" role="group" aria-label="요일별 응답">
+            {v.slots.map((slot) => {
+              const current = options.findIndex(
+                ([value]) => value === answers[slot.id],
+              );
+              const [value, mark, label] = options[current] ?? [
+                "UNANSWERED",
+                "–",
+                "미응답",
+              ];
+              return (
+                <div className="vote-slot" key={slot.id}>
+                  <b>{slot.day}</b>
+                  <button
+                    className={`vote-cell ${value}`}
+                    type="button"
+                    aria-label={`${slot.day} · ${label} · 응답 바꾸기`}
+                    disabled={!allowed || busy}
+                    onClick={() => {
+                      setAnswers((previous) => ({
+                        ...previous,
+                        [slot.id]: options[(current + 1) % options.length][0],
+                      }));
+                      setSaved(false);
+                    }}
+                  >
+                    <span>{mark}</span>
+                    {label}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
           {!allowed && (
             <ErrorBox
               error={

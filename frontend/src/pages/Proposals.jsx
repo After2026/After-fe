@@ -1,4 +1,4 @@
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, useRef } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { service, categories, statuses, demoMode } from "../lib/service";
 import {
@@ -12,7 +12,6 @@ import {
   Progress,
   date,
 } from "../ui";
-import bandi from "../assets/bandi.svg";
 
 const proposalSorts = [
   ["interest", "관심 인원순"],
@@ -28,26 +27,50 @@ export function Home() {
   const [q, setQ] = useState(""),
     [query, setQuery] = useState(""),
     [category, setCategory] = useState(""),
-    [status, setStatus] = useState(""),
-    [grade, setGrade] = useState(""),
+    [selectedStatuses, setStatuses] = useState([]),
+    [selectedGrades, setGrades] = useState([]),
     [sort, setSort] = useState("interest");
   const [interests, proposals] = summary.data ?? [];
-  const filters = { q: query, category, status, grade, sort };
+  const filters = {
+    q: query,
+    category,
+    statuses: selectedStatuses,
+    grades: selectedGrades,
+    sort,
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => setQuery(q.trim()), 250);
+    return () => clearTimeout(timer);
+  }, [q]);
+
+  function statusOption(key) {
+    return (
+      <label key={key} className="filter-check">
+        <input
+          type="checkbox"
+          checked={selectedStatuses.includes(key)}
+          onChange={() => setStatuses((values) => toggleFilter(values, key))}
+        />
+        {statuses[key]}
+      </label>
+    );
+  }
 
   return (
     <section className="listing-page">
       <div className="page-heading">
         <div>
+          {demoMode && (
+            <p className="listing-term">2026학년도 2학기 · 제안 접수</p>
+          )}
           <h1>수업 제안</h1>
-          <p className="subtitle">
-            관심 있는 방과후 수업을 찾고, 듣고 싶은 수업을 제안해 보세요.
-          </p>
         </div>
         <div className="listing-actions">
           {summary.data && (
             <Link className="listing-activity" to="/my">
-              관심 표시 <b>{interests.items.length}건</b> · 내 제안{" "}
-              <b>{proposals.items.length}건</b>
+              관심 표시 <b>{interests.items.length}</b>건 · 이번 학기 제안{" "}
+              <b>{proposals.items.length}</b>건
             </Link>
           )}
           <Link className="button listing-create" to="/proposals/new">
@@ -75,22 +98,17 @@ export function Home() {
               type="search"
               placeholder="수업명·내용 검색"
             />
-            <button className="icon-button">검색</button>
           </form>
-          <label className="filter-section">
-            <span className="filter-label">상태</span>
-            <select
-              value={status}
-              onChange={(event) => setStatus(event.target.value)}
-            >
-              <option value="">모든 상태</option>
-              {Object.entries(statuses).map(([key, label]) => (
-                <option key={key} value={key}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </label>
+          <fieldset className="filter-section">
+            <legend className="filter-label">상태</legend>
+            {["SURVEYING", "VOTING"].map(statusOption)}
+            <details className="additional-filters">
+              <summary>다른 상태</summary>
+              {Object.keys(statuses)
+                .filter((key) => !["SURVEYING", "VOTING"].includes(key))
+                .map(statusOption)}
+            </details>
+          </fieldset>
           <fieldset className="filter-section">
             <legend className="filter-label">분류</legend>
             <div className="chips">
@@ -109,44 +127,33 @@ export function Home() {
               )}
             </div>
           </fieldset>
-          <label className="filter-section">
-            <span className="filter-label">대상 학년</span>
-            <select
-              value={grade}
-              onChange={(event) => setGrade(event.target.value)}
-            >
-              <option value="">모든 학년</option>
-              {[1, 2, 3].map((year) => (
-                <option value={year} key={year}>
-                  {year}학년{year === user?.grade ? " (내 학년)" : ""}
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="listing-bandi">
-            <img src={bandi} width="44" height="44" alt="반디" />
-            <p>듣고 싶은 수업이 있으면 관심을 표시해 봐!</p>
-          </div>
+          <fieldset className="filter-section">
+            <legend className="filter-label">대상 학년</legend>
+            {[1, 2, 3].map((year) => (
+              <label key={year} className="filter-check">
+                <input
+                  type="checkbox"
+                  checked={selectedGrades.includes(year)}
+                  onChange={() =>
+                    setGrades((values) => toggleFilter(values, year))
+                  }
+                />
+                {year}학년{year === user?.grade ? " (내 학년)" : ""}
+              </label>
+            ))}
+          </fieldset>
         </aside>
         <section className="listing-content" aria-label="제안 목록">
-          <div className="list-toolbar">
-            <div className="listing-sort" role="group" aria-label="정렬">
-              {proposalSorts.map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={sort === value}
-                  onClick={() => setSort(value)}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
           <ProposalList
-            key={JSON.stringify(filters)}
+            key={JSON.stringify([
+              query,
+              category,
+              selectedStatuses,
+              selectedGrades,
+            ])}
             filters={filters}
             interests={interests?.items ?? []}
+            setSort={setSort}
           />
         </section>
       </div>
@@ -154,19 +161,57 @@ export function Home() {
   );
 }
 
-function ProposalList({ filters, interests }) {
-  const r = useResource(() => service.list(filters));
+function toggleFilter(values, key) {
+  return values.includes(key)
+    ? values.filter((value) => value !== key)
+    : [...values, key];
+}
+
+async function loadProposalPage({ statuses, grades, ...filters }, cursor) {
+  const seenCursors = new Set();
+  while (true) {
+    seenCursors.add(cursor);
+    const result = await service.list({
+      ...filters,
+      status: statuses.length === 1 ? statuses[0] : "",
+      grade: grades.length === 1 ? grades[0] : "",
+      cursor,
+    });
+    const items = result.items.filter(
+      (proposal) =>
+        (!statuses.length || statuses.includes(proposal.status)) &&
+        (!grades.length ||
+          proposal.targetGrades?.some((grade) => grades.includes(grade))),
+    );
+    const nextCursor = seenCursors.has(result.nextCursor)
+      ? null
+      : result.nextCursor;
+    if (items.length || !nextCursor) return { items, nextCursor };
+    cursor = nextCursor;
+  }
+}
+
+function ProposalList({ filters, interests, setSort }) {
+  const r = useResource(() => loadProposalPage(filters), [filters.sort]);
   const [page, setPage] = useState(null);
-  const [busy, setBusy] = useState(false);
+  const [loadingSort, setLoadingSort] = useState(null);
   const [error, setError] = useState(null);
   const nextCursor = page ? page.nextCursor : r.data?.nextCursor;
   const interestedIds = new Set(interests.map(({ id }) => String(id)));
+  const loaded = [...(r.data?.items ?? []), ...(page?.items ?? [])];
+
+  function sort(value) {
+    if (value === filters.sort) return;
+    setPage(null);
+    setError(null);
+    setSort(value);
+  }
 
   async function more() {
-    setBusy(true);
+    setLoadingSort(filters.sort);
     setError(null);
     try {
-      const result = await service.list({ ...filters, cursor: nextCursor });
+      const result = await loadProposalPage(filters, nextCursor);
       setPage((previous) => ({
         items: [...(previous?.items ?? []), ...result.items],
         nextCursor: result.nextCursor,
@@ -174,47 +219,64 @@ function ProposalList({ filters, interests }) {
     } catch (error) {
       setError(error);
     } finally {
-      setBusy(false);
+      setLoadingSort(null);
     }
   }
 
   return (
-    <Resource resource={r}>
-      {({ items }) => {
-        const loaded = [...items, ...(page?.items ?? [])];
-        if (!loaded.length)
-          return <p className="empty">조건에 맞는 수업이 없습니다.</p>;
-        return (
-          <>
-            <p className="listing-count" role="status">
-              표시 중 <b>{loaded.length}건</b>
-            </p>
-            <div className="cards">
-              {loaded.map((p) => (
-                <Card
-                  key={p.id}
-                  p={p}
-                  listing
-                  interested={interestedIds.has(String(p.id))}
-                />
-              ))}
-            </div>
-            {nextCursor && (
-              <button
-                disabled={busy}
-                className="quiet load-more"
-                onClick={more}
-              >
-                {busy ? "불러오는 중…" : "더 보기"}
-              </button>
-            )}
-            {error && <ErrorBox error={error} />}
-          </>
-        );
-      }}
-    </Resource>
+    <>
+      <div className="list-toolbar">
+        <p className="listing-count" role="status">
+          표시 중 <b>{loaded.length}</b>건
+        </p>
+        <div className="listing-sort" role="group" aria-label="정렬">
+          {proposalSorts.map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              aria-pressed={filters.sort === value}
+              disabled={loadingSort !== null}
+              onClick={() => sort(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <Resource resource={r}>
+        {() =>
+          loaded.length ? (
+            <>
+              <div className="cards">
+                {loaded.map((p) => (
+                  <Card
+                    key={p.id}
+                    p={p}
+                    listing
+                    interested={interestedIds.has(String(p.id))}
+                  />
+                ))}
+              </div>
+              {nextCursor && (
+                <button
+                  disabled={loadingSort !== null}
+                  className="quiet load-more"
+                  onClick={more}
+                >
+                  {loadingSort !== null ? "불러오는 중…" : "더 보기"}
+                </button>
+              )}
+              {error && <ErrorBox error={error} />}
+            </>
+          ) : (
+            <p className="empty">조건에 맞는 수업이 없습니다.</p>
+          )
+        }
+      </Resource>
+    </>
   );
 }
+
 const proposalStages = [
   ["수업 제안 · 임시저장", ["DRAFT"]],
   ["공동제안 동의 · 제출", ["SUBMITTED"]],
@@ -247,7 +309,7 @@ export function Detail() {
         const deadline =
           p.status === "VOTING" ? p.voteDeadline : p.surveyDeadline;
         return (
-          <>
+          <section className="proposal-detail">
             <Link className="back" to="/">
               ‹ 수업제안 / {p.title}
             </Link>
@@ -284,7 +346,7 @@ export function Detail() {
                 </div>
                 <h2>제안 사유</h2>
                 <p className="preline">{p.description}</p>
-                <h2>활동 계획</h2>
+                <h2>기대 활동 내용</h2>
                 <p className="preline">
                   {p.activityPlan || "등록된 활동 계획이 없습니다."}
                 </p>
@@ -362,7 +424,7 @@ export function Detail() {
                 </section>
               </aside>
             </div>
-          </>
+          </section>
         );
       }}
     </Resource>
@@ -374,6 +436,11 @@ function Interest({ p, user, reload }) {
     [open, setOpen] = useState(false),
     [error, setError] = useState(null),
     [busy, setBusy] = useState(false);
+  const dialog = useRef(null);
+  useEffect(() => {
+    if (open && dialog.current && !dialog.current.open)
+      dialog.current.showModal();
+  }, [open]);
   const eligible =
     user?.role === "STUDENT" &&
     p.targetGrades.includes(user.grade) &&
@@ -409,61 +476,79 @@ function Interest({ p, user, reload }) {
         </p>
       )}
       {open && (
-        <form
-          className="interest-form"
-          id="interest-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            act();
-          }}
+        <dialog
+          className="interest-dialog"
+          ref={dialog}
+          aria-labelledby="interest-title"
+          onClose={() => setOpen(false)}
         >
-          <fieldset disabled={busy || !eligible}>
-            <legend>참여 의향</legend>
-            {[
-              [1, "개설되면 반드시 신청"],
-              [2, "시간이 맞으면 신청"],
-              [3, "관심만 있어요"],
-            ].map(([n, t]) => (
-              <label className="choice" key={n}>
-                <input
-                  required
-                  type="radio"
-                  name="intent"
-                  checked={intent === n}
-                  onChange={() => setIntent(n)}
+          <h2 id="interest-title">얼마나 듣고 싶나요?</h2>
+          <form
+            className="interest-form"
+            id="interest-form"
+            onSubmit={(e) => {
+              e.preventDefault();
+              act();
+            }}
+          >
+            <fieldset disabled={busy || !eligible}>
+              <legend>참여 의향</legend>
+              {[
+                [1, "개설되면 반드시 신청"],
+                [2, "시간이 맞으면 신청"],
+                [3, "관심만 있어요"],
+              ].map(([n, t]) => (
+                <label className="choice" key={n}>
+                  <input
+                    required
+                    type="radio"
+                    name="intent"
+                    checked={intent === n}
+                    onChange={() => setIntent(n)}
+                  />
+                  {t}
+                </label>
+              ))}
+              <label className="field">
+                의견 (선택)
+                <textarea
+                  maxLength={1000}
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
                 />
-                {t}
               </label>
-            ))}
-            <label className="field">
-              의견 (선택)
-              <textarea
-                maxLength={1000}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-              />
-            </label>
-            <button className="block" disabled={!intent}>
-              {busy ? "저장 중…" : "관심 저장"}
-            </button>
-            {p.myInterest && (
-              <button
-                type="button"
-                className="quiet block"
-                onClick={() => act(true)}
-              >
-                관심 취소
-              </button>
-            )}
-          </fieldset>
-        </form>
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="quiet"
+                  onClick={() => dialog.current.close()}
+                >
+                  닫기
+                </button>
+                <button disabled={!intent}>
+                  {busy ? "저장 중…" : "관심 저장"}
+                </button>
+              </div>
+              {p.myInterest && (
+                <button
+                  type="button"
+                  className="quiet block"
+                  onClick={() => act(true)}
+                >
+                  관심 취소
+                </button>
+              )}
+            </fieldset>
+          </form>
+          {error && <ErrorBox error={error} />}
+        </dialog>
       )}
       {!eligible && (
         <p className="muted">
           대상 학년의 학생만 수요조사 기간에 참여할 수 있습니다.
         </p>
       )}
-      {error && <ErrorBox error={error} />}
+      {error && !open && <ErrorBox error={error} />}
     </>
   );
 }
@@ -517,7 +602,7 @@ export function NewProposal() {
     }
   }
   return (
-    <section>
+    <section className="proposal-editor">
       <div className="page-heading">
         <div>
           <p className="eyebrow">2026학년도 2학기</p>
@@ -729,58 +814,117 @@ export function NewProposal() {
   );
 }
 export function My() {
+  const { user } = useContext(Auth);
   const votes = useResource(() => service.list({ status: "VOTING" }));
   const r = useResource(() =>
     Promise.all([service.myInterests(), service.myProposals()]),
   );
+  const enrollment = useResource(() => service.enrollments());
   return (
-    <>
+    <section className="activity-page">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">마이페이지</p>
+          <p className="eyebrow">
+            {user?.grade
+              ? `${user.grade}학년${user.classNumber ? ` ${user.classNumber}반` : ""}`
+              : "마이페이지"}
+          </p>
           <h1>내 활동</h1>
         </div>
       </div>
-      <section className="my-section">
-        <h2>일정 투표할 수업</h2>
-        <Resource resource={votes}>
-          {(data) =>
-            data.items.length ? (
-              <div className="cards">
-                {data.items.map((p) => (
-                  <Card key={p.id} p={p} />
-                ))}
-              </div>
-            ) : (
-              <p className="empty">진행 중인 일정 투표가 없습니다.</p>
-            )
-          }
-        </Resource>
-      </section>
-      <Resource resource={r}>
-        {([interests, proposals]) => (
-          <>
-            {[
-              [interests, "관심 표시한 수업"],
-              [proposals, "내가 제안한 수업"],
-            ].map(([data, title]) => (
-              <section className="my-section" key={title}>
-                <h2>{title}</h2>
-                {data.items.length ? (
-                  <div className="cards">
-                    {data.items.map((p) => (
-                      <Card p={p} key={p.id} />
-                    ))}
-                  </div>
+      <div className="activity-layout">
+        <div className="activity-main">
+          <section className="panel activity-todo" aria-label="해야 할 일">
+            <h2>일정 투표할 수업</h2>
+            <Resource resource={votes}>
+              {({ items }) =>
+                items.length ? (
+                  items.map((proposal) => (
+                    <div className="activity-row" key={proposal.id}>
+                      <div>
+                        <Tag status={proposal.status} />
+                        <h3>{proposal.title}</h3>
+                        {proposal.voteDeadline && (
+                          <small>마감 {date(proposal.voteDeadline)}</small>
+                        )}
+                      </div>
+                      <Link
+                        className="button"
+                        to={`/proposals/${proposal.id}/vote`}
+                      >
+                        투표하기
+                      </Link>
+                    </div>
+                  ))
                 ) : (
-                  <p className="empty">아직 참여한 수업이 없습니다.</p>
-                )}
-              </section>
-            ))}
-          </>
-        )}
-      </Resource>
-    </>
+                  <p className="empty">진행 중인 일정 투표가 없습니다.</p>
+                )
+              }
+            </Resource>
+          </section>
+          <Resource resource={r}>
+            {([interests, proposals]) => (
+              <>
+                {[
+                  [interests, "관심 표시한 수업"],
+                  [proposals, "내 제안"],
+                ].map(([data, title]) => (
+                  <section className="panel activity-group" key={title}>
+                    <h2>
+                      {title} <small>{data.items.length}건</small>
+                    </h2>
+                    {data.items.length ? (
+                      data.items.map((p) => (
+                        <Link
+                          className="activity-row"
+                          to={`/proposals/${p.id}`}
+                          key={p.id}
+                        >
+                          <div>
+                            <h3>{p.title}</h3>
+                            <small>
+                              {categories[p.category]} ·{" "}
+                              {p.targetGrades?.join(", ")}학년
+                            </small>
+                          </div>
+                          <Tag status={p.status} />
+                        </Link>
+                      ))
+                    ) : (
+                      <p className="empty">아직 등록된 수업이 없습니다.</p>
+                    )}
+                  </section>
+                ))}
+              </>
+            )}
+          </Resource>
+        </div>
+        <aside className="activity-aside">
+          <section className="panel">
+            <h2>수강신청 · 신청한 강좌</h2>
+            <Resource resource={enrollment}>
+              {({ items }) =>
+                items.length ? (
+                  <ul className="activity-enrollments">
+                    {items.map(({ id, title }) => (
+                      <li key={id}>{title}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted">아직 신청한 수업이 없습니다.</p>
+                )
+              }
+            </Resource>
+            <Link className="button quiet" to="/enrollments">
+              수강신청으로 이동
+            </Link>
+          </section>
+          <Link className="button quiet" to="/notifications">
+            알림함 열기
+          </Link>
+        </aside>
+      </div>
+    </section>
   );
 }
 export function Guide() {
