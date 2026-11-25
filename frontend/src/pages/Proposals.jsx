@@ -12,9 +12,18 @@ import {
   Progress,
   date,
 } from "../ui";
+import bandi from "../assets/bandi.svg";
+
+const proposalSorts = [
+  ["interest", "관심 인원순"],
+  ["latest", "최신순"],
+  ["deadline", "마감 임박순"],
+];
+
 export function Home() {
+  const { user } = useContext(Auth);
   const summary = useResource(() =>
-    Promise.all([service.myInterests(), service.list({ status: "VOTING" })]),
+    Promise.all([service.myInterests(), service.myProposals()]),
   );
   const [q, setQ] = useState(""),
     [query, setQuery] = useState(""),
@@ -22,287 +31,340 @@ export function Home() {
     [status, setStatus] = useState(""),
     [grade, setGrade] = useState(""),
     [sort, setSort] = useState("interest");
-  const [extra, setExtra] = useState([]),
-    [cursor, setCursor] = useState(null),
-    [busy, setBusy] = useState(false),
-    [error, setError] = useState(null);
-  const r = useResource(
-    () => service.list({ q: query, category, status, grade, sort }),
-    [query, category, status, grade, sort],
-  );
-  useEffect(() => {
-    setExtra([]);
-    setCursor(null);
-    setError(null);
-  }, [query, category, status, grade, sort]);
-  async function more() {
-    setBusy(true);
-    try {
-      const page = await service.list({
-        q: query,
-        category,
-        status,
-        grade,
-        sort,
-        cursor: cursor || r.data.nextCursor,
-      });
-      setExtra((v) => [...v, ...page.items]);
-      setCursor(page.nextCursor || "END");
-    } catch (e) {
-      setError(e);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const [interests, proposals] = summary.data ?? [];
+  const filters = { q: query, category, status, grade, sort };
+
   return (
     <section className="listing-page">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">2026학년도 2학기 · 제안·수요조사 기간</p>
           <h1>수업 제안</h1>
           <p className="subtitle">
-            배우고 싶은 수업에 관심을 모아, 우리의 방과후를 만들어요.
+            관심 있는 방과후 수업을 찾고, 듣고 싶은 수업을 제안해 보세요.
           </p>
         </div>
-        <Link className="button desktop-create" to="/proposals/new">
-          + 새 수업 제안하기
-        </Link>
-      </div>
-      <section className="mobile-summary dark-panel">
-        <div>
-          제안 · 수요 참여현황 <span className="pill">진행중</span>
-        </div>
-        <div className="summary-boxes">
-          <div>
-            <small>이번 학기 내 관심</small>
-            <b>
-              {summary.data?.[0].items.length ?? "—"} <span>개 수업</span>
-            </b>
-          </div>
-          <div>
-            <small>일정 투표</small>
-            <Link to="/my">
-              {summary.data?.[1].items.length ?? "—"}개 진행중 →
+        <div className="listing-actions">
+          {summary.data && (
+            <Link className="listing-activity" to="/my">
+              관심 표시 <b>{interests.items.length}건</b> · 내 제안{" "}
+              <b>{proposals.items.length}건</b>
             </Link>
-          </div>
+          )}
+          <Link className="button listing-create" to="/proposals/new">
+            <Icon name="plus" />새 수업 제안하기
+          </Link>
         </div>
-        <Link className="button white" to="/proposals/new">
-          + 새 수업 제안하기
-        </Link>
-      </section>
+      </div>
       <div className="listing-layout">
-        <aside className="filter-sidebar">
+        <aside className="filter-sidebar" aria-label="수업 필터">
           <form
             className="search"
-            onSubmit={(e) => {
-              e.preventDefault();
+            onSubmit={(event) => {
+              event.preventDefault();
               setQuery(q.trim());
             }}
           >
-            <Icon name="search" size={15} />
+            <Icon name="search" size={18} />
             <input
               value={q}
-              onChange={(e) => setQ(e.target.value)}
+              onChange={(event) => {
+                setQ(event.target.value);
+                if (!event.target.value) setQuery("");
+              }}
               aria-label="수업 검색"
               type="search"
-              placeholder="듣고 싶은 수업 검색"
+              placeholder="수업명·내용 검색"
             />
-            <button className="icon-button" aria-label="검색">
-              검색
-            </button>
+            <button className="icon-button">검색</button>
           </form>
-          <div className="filter-section">
-            <h3>상태</h3>
+          <label className="filter-section">
+            <span className="filter-label">상태</span>
             <select
-              aria-label="상태"
               value={status}
-              onChange={(e) => setStatus(e.target.value)}
+              onChange={(event) => setStatus(event.target.value)}
             >
               <option value="">모든 상태</option>
-              {Object.entries(statuses).map(([k, v]) => (
-                <option key={k} value={k}>
-                  {v}
+              {Object.entries(statuses).map(([key, label]) => (
+                <option key={key} value={key}>
+                  {label}
                 </option>
               ))}
             </select>
-          </div>
-          <div className="filter-section">
-            <h3>분류</h3>
+          </label>
+          <fieldset className="filter-section">
+            <legend className="filter-label">분류</legend>
             <div className="chips">
-              {[["", "전체"], ...Object.entries(categories)].map(([k, v]) => (
+              {[["", "전체"], ...Object.entries(categories)].map(
+                ([key, label]) => (
+                  <button
+                    key={key}
+                    type="button"
+                    className={`chip ${category === key ? "active" : ""}`}
+                    aria-pressed={category === key}
+                    onClick={() => setCategory(key)}
+                  >
+                    {label}
+                  </button>
+                ),
+              )}
+            </div>
+          </fieldset>
+          <label className="filter-section">
+            <span className="filter-label">대상 학년</span>
+            <select
+              value={grade}
+              onChange={(event) => setGrade(event.target.value)}
+            >
+              <option value="">모든 학년</option>
+              {[1, 2, 3].map((year) => (
+                <option value={year} key={year}>
+                  {year}학년{year === user?.grade ? " (내 학년)" : ""}
+                </option>
+              ))}
+            </select>
+          </label>
+          <div className="listing-bandi">
+            <img src={bandi} width="44" height="44" alt="반디" />
+            <p>듣고 싶은 수업이 있으면 관심을 표시해 봐!</p>
+          </div>
+        </aside>
+        <section className="listing-content" aria-label="제안 목록">
+          <div className="list-toolbar">
+            <div className="listing-sort" role="group" aria-label="정렬">
+              {proposalSorts.map(([value, label]) => (
                 <button
-                  key={k}
-                  className={`chip ${category === k ? "active" : ""}`}
-                  aria-pressed={category === k}
-                  onClick={() => setCategory(k)}
+                  key={value}
+                  type="button"
+                  aria-pressed={sort === value}
+                  onClick={() => setSort(value)}
                 >
-                  {v}
+                  {label}
                 </button>
               ))}
             </div>
           </div>
-          <div className="filter-section">
-            <h3>대상 학년</h3>
-            <select
-              aria-label="학년"
-              value={grade}
-              onChange={(e) => setGrade(e.target.value)}
-            >
-              <option value="">모든 학년</option>
-              {[1, 2, 3].map((n) => (
-                <option value={n} key={n}>
-                  {n}학년
-                </option>
-              ))}
-            </select>
-          </div>
-        </aside>
-        <div className="listing-content">
-          <div className="list-toolbar">
-            <span>함께 만드는 수업</span>
-            <select
-              aria-label="정렬"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-            >
-              <option value="interest">관심 인원순</option>
-              <option value="latest">최신순</option>
-              <option value="deadline">마감 임박순</option>
-            </select>
-          </div>
-          <Resource resource={r}>
-            {(data) => (
-              <>
-                <div className="cards">
-                  {[...data.items, ...extra].map((p) => (
-                    <Card key={p.id} p={p} />
-                  ))}
-                </div>
-                {!data.items.length && (
-                  <p className="empty">조건에 맞는 수업이 없습니다.</p>
-                )}
-                {cursor !== "END" && data.nextCursor && (
-                  <button
-                    disabled={busy}
-                    className="quiet load-more"
-                    onClick={more}
-                  >
-                    더 보기
-                  </button>
-                )}
-              </>
-            )}
-          </Resource>
-          {error && <ErrorBox error={error} />}
-        </div>
+          <ProposalList
+            key={JSON.stringify(filters)}
+            filters={filters}
+            interests={interests?.items ?? []}
+          />
+        </section>
       </div>
     </section>
   );
 }
+
+function ProposalList({ filters, interests }) {
+  const r = useResource(() => service.list(filters));
+  const [page, setPage] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const nextCursor = page ? page.nextCursor : r.data?.nextCursor;
+  const interestedIds = new Set(interests.map(({ id }) => String(id)));
+
+  async function more() {
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await service.list({ ...filters, cursor: nextCursor });
+      setPage((previous) => ({
+        items: [...(previous?.items ?? []), ...result.items],
+        nextCursor: result.nextCursor,
+      }));
+    } catch (error) {
+      setError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Resource resource={r}>
+      {({ items }) => {
+        const loaded = [...items, ...(page?.items ?? [])];
+        if (!loaded.length)
+          return <p className="empty">조건에 맞는 수업이 없습니다.</p>;
+        return (
+          <>
+            <p className="listing-count" role="status">
+              표시 중 <b>{loaded.length}건</b>
+            </p>
+            <div className="cards">
+              {loaded.map((p) => (
+                <Card
+                  key={p.id}
+                  p={p}
+                  listing
+                  interested={interestedIds.has(String(p.id))}
+                />
+              ))}
+            </div>
+            {nextCursor && (
+              <button
+                disabled={busy}
+                className="quiet load-more"
+                onClick={more}
+              >
+                {busy ? "불러오는 중…" : "더 보기"}
+              </button>
+            )}
+            {error && <ErrorBox error={error} />}
+          </>
+        );
+      }}
+    </Resource>
+  );
+}
+const proposalStages = [
+  ["수업 제안 · 임시저장", ["DRAFT"]],
+  ["공동제안 동의 · 제출", ["SUBMITTED"]],
+  [
+    "검토 · 수요조사",
+    ["REVIEWING", "SURVEYING", "ON_HOLD", "REJECTED", "BELOW_THRESHOLD"],
+  ],
+  ["일정 투표", ["VOTING"]],
+  ["개설 확정 · 수강신청", ["CONFIRMED", "ENROLLING", "RUNNING"]],
+];
+
+function proposalReference(value) {
+  try {
+    const url = new URL(value);
+    if (url.protocol === "https:" || url.protocol === "http:") return url.href;
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 export function Detail() {
   const { id } = useParams(),
     { user } = useContext(Auth),
     r = useResource(() => service.detail(id), [id]);
   return (
     <Resource resource={r}>
-      {(p) => (
-        <>
-          <Link className="back" to="/">
-            ‹ 수업제안 / {p.title}
-          </Link>
-          <div className="detail-layout">
-            <article className="panel detail-main">
-              <div className="detail-tags">
-                <Tag status={p.status} />
-                <span>
-                  {categories[p.category]} · {p.targetGrades?.join("~")}학년
-                </span>
-              </div>
-              <h1>{p.title}</h1>
-              <p className="muted">
-                제안자 {p.proposerName} · 희망 정원 {p.capacity || 20}명 ·{" "}
-                {p.instructorType === "EXTERNAL" ? "외부 강사" : "교내 교사"}
-              </p>
-              <div className="facts">
-                {[
-                  ["수업 대상", `${p.targetGrades?.join("·")}학년`],
-                  ["희망 정원", `${p.capacity || 20}명`],
-                  [
-                    "희망 강사",
-                    p.instructorType === "EXTERNAL" ? "외부 강사" : "교내 교사",
-                  ],
-                  ["수업 시기", "학기 중 방과후"],
-                ].map(([t, v]) => (
-                  <div key={t}>
-                    <small>{t}</small>
-                    <b>{v}</b>
-                  </div>
-                ))}
-              </div>
-              <h2>제안 사유</h2>
-              <p className="preline">{p.description}</p>
-              <h2>활동 계획</h2>
-              <p className="preline">
-                {p.activityPlan ||
-                  "기초 개념을 함께 배우고, 실습과 프로젝트를 통해 배운 내용을 적용해요."}
-              </p>
-              {p.instructorName && (
-                <>
-                  <h2>희망 교사 추천 · 참고 링크</h2>
-                  <p>{p.instructorName}</p>
-                </>
-              )}
-            </article>
-            <aside className="detail-aside">
-              <section className="panel">
-                <small>관심 수요</small>
-                <div className="demand">
-                  <strong>{p.interestCount}</strong>
-                  <span>/ {p.threshold}명</span>
+      {(p) => {
+        const reference = proposalReference(p.referenceUrl);
+        const deadline =
+          p.status === "VOTING" ? p.voteDeadline : p.surveyDeadline;
+        return (
+          <>
+            <Link className="back" to="/">
+              ‹ 수업제안 / {p.title}
+            </Link>
+            <div className="detail-layout">
+              <article className="panel detail-main">
+                <div className="detail-tags">
                   <Tag status={p.status} />
+                  <span>
+                    {categories[p.category]} · {p.targetGrades?.join("~")}학년
+                  </span>
                 </div>
-                <Progress value={p.interestCount} max={p.threshold} />
+                <h1>{p.title}</h1>
                 <p className="muted">
-                  마감 {date(p.surveyDeadline || p.voteDeadline)}
+                  제안자 {p.proposerName} · 희망 정원 {p.capacity || 20}명 ·{" "}
+                  {p.instructorType === "EXTERNAL" ? "외부 강사" : "교내 교사"}
                 </p>
-                {p.status === "VOTING" ? (
+                <div className="facts">
+                  {[
+                    ["수업 대상", `${p.targetGrades?.join("·")}학년`],
+                    ["희망 정원", `${p.capacity || 20}명`],
+                    [
+                      "희망 강사",
+                      p.instructorType === "EXTERNAL"
+                        ? "외부 강사"
+                        : "교내 교사",
+                    ],
+                    ["수업 시기", "학기 중 방과후"],
+                  ].map(([t, v]) => (
+                    <div key={t}>
+                      <small>{t}</small>
+                      <b>{v}</b>
+                    </div>
+                  ))}
+                </div>
+                <h2>제안 사유</h2>
+                <p className="preline">{p.description}</p>
+                <h2>활동 계획</h2>
+                <p className="preline">
+                  {p.activityPlan || "등록된 활동 계획이 없습니다."}
+                </p>
+                {(p.instructorName || reference) && (
                   <>
-                    <Link className="button block" to={`/proposals/${id}/vote`}>
-                      일정 투표하기
-                    </Link>
-                    <Link className="text-link" to={`/proposals/${id}/result`}>
-                      투표 결과 보기 →
-                    </Link>
+                    <h2>희망 교사 추천 · 참고 링크</h2>
+                    {p.instructorName && <p>{p.instructorName}</p>}
+                    {reference && (
+                      <a
+                        className="quiet button"
+                        href={reference}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        참고 자료 열기
+                      </a>
+                    )}
                   </>
-                ) : p.status === "SURVEYING" ? (
-                  <Interest
-                    p={p}
-                    user={user}
-                    key={JSON.stringify(p.myInterest)}
-                    reload={r.reload}
-                  />
-                ) : (
-                  <p className="muted">
-                    {p.status === "DRAFT"
-                      ? "임시저장한 제안입니다. 공동제안자 동의 후 제출할 수 있습니다."
-                      : "현재 관심 표시 기간이 아닙니다."}
-                  </p>
                 )}
-              </section>
-              <section className="panel">
-                <h2>진행 단계</h2>
-                <ol className="timeline">
-                  <li>수업 제안 · 임시저장</li>
-                  <li>공동제안 동의 · 제출</li>
-                  <li>검토 · 수요조사</li>
-                  <li>일정 투표</li>
-                  <li>개설 확정 · 수강신청</li>
-                </ol>
-              </section>
-            </aside>
-          </div>
-        </>
-      )}
+              </article>
+              <aside className="detail-aside">
+                <section className="panel">
+                  <h2>관심 수요</h2>
+                  <div className="demand">
+                    <strong>{p.interestCount}</strong>
+                    <span>/ {p.threshold}명</span>
+                    <Tag status={p.status} />
+                  </div>
+                  <Progress value={p.interestCount} max={p.threshold} />
+                  {deadline && <p className="muted">마감 {date(deadline)}</p>}
+                  {p.status === "VOTING" ? (
+                    <>
+                      <Link
+                        className="button block"
+                        to={`/proposals/${id}/vote`}
+                      >
+                        일정 투표하기
+                      </Link>
+                      <Link
+                        className="text-link"
+                        to={`/proposals/${id}/result`}
+                      >
+                        투표 결과 보기 →
+                      </Link>
+                    </>
+                  ) : p.status === "SURVEYING" ? (
+                    <Interest
+                      p={p}
+                      user={user}
+                      key={JSON.stringify(p.myInterest)}
+                      reload={r.reload}
+                    />
+                  ) : (
+                    <p className="muted">
+                      {p.status === "DRAFT"
+                        ? "임시저장한 제안입니다. 공동제안자 동의 후 제출할 수 있습니다."
+                        : "현재 관심 표시 기간이 아닙니다."}
+                    </p>
+                  )}
+                </section>
+                <section className="panel">
+                  <h2>진행 단계</h2>
+                  <ol className="timeline">
+                    {proposalStages.map(([label, values]) => (
+                      <li
+                        key={label}
+                        aria-current={
+                          values.includes(p.status) ? "step" : undefined
+                        }
+                      >
+                        {label}
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+              </aside>
+            </div>
+          </>
+        );
+      }}
     </Resource>
   );
 }
@@ -332,7 +394,10 @@ function Interest({ p, user, reload }) {
     <>
       <button
         className="block"
+        type="button"
         disabled={!eligible}
+        aria-expanded={open}
+        aria-controls={open ? "interest-form" : undefined}
         onClick={() => setOpen(!open)}
       >
         ♡ {p.myInterest ? "관심 표시 수정" : "관심 표시하기"}
@@ -346,6 +411,7 @@ function Interest({ p, user, reload }) {
       {open && (
         <form
           className="interest-form"
+          id="interest-form"
           onSubmit={(e) => {
             e.preventDefault();
             act();

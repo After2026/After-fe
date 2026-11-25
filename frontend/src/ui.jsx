@@ -4,8 +4,13 @@ import { statuses, categories } from "./lib/service";
 export const Auth = createContext(null);
 export function Icon({ name, size = 18, ...props }) {
   const paths = {
-    bulb: <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3ZM9.5 18.5h5M10.5 21h3" />,
-    eye: <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6Z" />,
+    plus: <path d="M12 5v14M5 12h14" />,
+    bulb: (
+      <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3ZM9.5 18.5h5M10.5 21h3" />
+    ),
+    eye: (
+      <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6Z" />
+    ),
     home: (
       <>
         <path d="M4 8h16v12H4zM8 8V4h8v4M9 12h6M9 16h6" />
@@ -75,8 +80,13 @@ export function Icon({ name, size = 18, ...props }) {
 export function Logo() {
   return (
     <Link className="brand" to="/">
-      <span className="logo-symbol"><Icon name="bulb" size={21} /></span>
-      <span className="brand-text"><strong>After</strong><span>우리가 만드는 방과후</span></span>
+      <span className="logo-symbol">
+        <Icon name="bulb" size={21} />
+      </span>
+      <span className="brand-text">
+        <strong>After</strong>
+        <span>우리가 만드는 방과후</span>
+      </span>
     </Link>
   );
 }
@@ -165,10 +175,11 @@ export function Progress({ value, max = 20, tone = "" }) {
     </div>
   );
 }
-export function Card({ p }) {
+export function Card({ p, listing = false, interested = false }) {
+  const deadline = p.status === "VOTING" ? p.voteDeadline : p.surveyDeadline;
   return (
     <Link className="proposal-card" to={`/proposals/${p.id}`}>
-      <CategoryIcon category={p.category} />
+      {!listing && <CategoryIcon category={p.category} />}
       <div className="card-copy">
         <div className="card-meta">
           <span>
@@ -176,19 +187,40 @@ export function Card({ p }) {
           </span>
           <Tag status={p.status} />
         </div>
-        <h3>{p.title}</h3>
-        <small>제안자 {p.proposerName} · 관심을 모으고 있어요</small>
+        <div className={listing ? "card-title" : undefined}>
+          <h3>{p.title}</h3>
+          {interested && <span className="interest-badge">관심 표시</span>}
+        </div>
+        <small>
+          제안자 {p.proposerName}
+          {!listing && " · 관심을 모으고 있어요"}
+        </small>
       </div>
       <div className="card-meter">
         <Progress
           value={p.interestCount}
           max={p.threshold}
-          tone={p.category === "ARTS_PE" ? "orange" : ""}
+          tone={
+            (
+              listing
+                ? p.threshold > 0 && p.interestCount >= p.threshold
+                : p.category === "ARTS_PE"
+            )
+              ? "orange"
+              : ""
+          }
         />
         <span>
+          {listing && "관심 "}
           <b>{p.interestCount}</b> / {p.threshold}명
         </span>
-        <small>{p.status === "VOTING" ? "투표 진행중" : "상세 보기 →"}</small>
+        <small>
+          {listing && deadline
+            ? `마감 ${date(deadline)}`
+            : p.status === "VOTING"
+              ? "투표 진행중"
+              : "상세 보기 →"}
+        </small>
       </div>
     </Link>
   );

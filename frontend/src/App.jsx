@@ -1,12 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import {
-  Link,
-  NavLink,
-  Routes,
-  Route,
-  useLocation,
-  Navigate,
-} from "react-router-dom";
+import { Link, Routes, Route, useLocation, Navigate } from "react-router-dom";
 import { service, demoMode } from "./lib/service";
 import { Auth, ErrorBox, Logo, Icon } from "./ui";
 import { Home, Detail, NewProposal, My, Guide } from "./pages/Proposals";
@@ -14,6 +7,39 @@ import { Vote, Results } from "./pages/Voting";
 import { Login, Signup, Welcome } from "./pages/Authentication";
 import { Notifications, NotificationsBell } from "./pages/Notifications";
 import { Enrollments, Admin } from "./pages/Management";
+const studentMenu = [
+  { path: "/", icon: "home", label: "수업 제안", mobileLabel: "제안" },
+  { path: "/enrollments", icon: "check", label: "수강신청" },
+  { path: "/my", icon: "user", label: "내 활동" },
+];
+
+function StudentNav({ mobile = false }) {
+  const { pathname } = useLocation();
+  return (
+    <nav
+      className={mobile ? "bottom-nav" : undefined}
+      aria-label={mobile ? "모바일 메뉴" : "주 메뉴"}
+    >
+      {studentMenu.map(({ path, icon, label, mobileLabel }) => {
+        const current = pathname === path;
+        const active =
+          current || (path === "/" && pathname.startsWith("/proposals/"));
+        return (
+          <Link
+            key={path}
+            to={path}
+            className={active ? "active" : undefined}
+            aria-current={current ? "page" : active ? "location" : undefined}
+          >
+            {mobile && <Icon name={icon} />}
+            <span>{mobile ? (mobileLabel ?? label) : label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 function Protected({ children, admin = false }) {
   const { user, loading } = useContext(Auth);
   const location = useLocation();
@@ -72,23 +98,7 @@ export default function App() {
           <header className="site-header">
             <div className="header-inner">
               <Logo />
-              {!authPage && user && (
-                <nav aria-label="주 메뉴">
-                  <NavLink
-                    to="/"
-                    end
-                    className={({ isActive }) =>
-                      isActive || location.pathname.startsWith("/proposals/")
-                        ? "active"
-                        : ""
-                    }
-                  >
-                    수업 제안
-                  </NavLink>
-                  <NavLink to="/enrollments">수강신청</NavLink>
-                  <NavLink to="/my">내 활동</NavLink>
-                </nav>
-              )}
+              {!authPage && user && <StudentNav />}
               <div className="account">
                 {!authPage && user && <NotificationsBell />}
                 {!authPage && user ? (
@@ -218,29 +228,7 @@ export default function App() {
         </main>
         {!authPage && !adminPage && user && (
           <>
-            <nav className="bottom-nav" aria-label="모바일 메뉴">
-              {[
-                ["/", "home", "제안"],
-                ["/enrollments", "check", "수강신청"],
-                ["/my", "user", "내 활동"],
-              ].map(([path, icon, label]) => (
-                <NavLink
-                  key={path}
-                  to={path}
-                  end={path === "/"}
-                  className={({ isActive }) =>
-                    isActive ||
-                    (path === "/" &&
-                      location.pathname.startsWith("/proposals/"))
-                      ? "active"
-                      : ""
-                  }
-                >
-                  <Icon name={icon} />
-                  <span>{label}</span>
-                </NavLink>
-              ))}
-            </nav>
+            <StudentNav mobile />
             <footer>
               <span>우리가 만드는 방과후</span>
               <Link to="/guide">이용 안내</Link>
