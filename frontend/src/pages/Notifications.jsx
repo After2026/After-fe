@@ -1,5 +1,5 @@
 import { useState, useEffect, useContext } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { service, demoMode } from "../lib/service";
 import { Auth, Icon, Resource, useResource, ErrorBox, date } from "../ui";
 export function NotificationsBell() {
@@ -31,16 +31,18 @@ export function NotificationsBell() {
     window.addEventListener("focus", refresh);
     window.addEventListener("storage", refresh);
     window.addEventListener("after:data-change", refresh);
+    window.addEventListener("after:notifications-read", refresh);
     return () => {
       active = false;
       clearInterval(timer);
       window.removeEventListener("focus", refresh);
       window.removeEventListener("storage", refresh);
       window.removeEventListener("after:data-change", refresh);
+      window.removeEventListener("after:notifications-read", refresh);
     };
   }, [user?.id, location.pathname]);
   return (
-    <Link
+    <NavLink
       to="/notifications"
       className="notification-bell"
       aria-label={
@@ -51,7 +53,7 @@ export function NotificationsBell() {
     >
       <Icon name="bell" />
       {count > 0 && <span>{count > 99 ? "99+" : count}</span>}
-    </Link>
+    </NavLink>
   );
 }
 export function Notifications() {
@@ -75,6 +77,7 @@ export function Notifications() {
       if (id === undefined) await service.readAllNotifications();
       else await service.readNotification(id);
       setError(null);
+      window.dispatchEvent(new Event("after:notifications-read"));
       r.reload();
     } catch (e) {
       setError(e);
@@ -87,7 +90,7 @@ export function Notifications() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">관심 수업 소식</p>
-          <h1>알림</h1>
+          <h1>알림함</h1>
         </div>
         <button className="quiet" onClick={() => read()} disabled={busy}>
           모두 읽음

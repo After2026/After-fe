@@ -11,18 +11,19 @@ import { service, demoMode } from "./lib/service";
 import { Auth, ErrorBox, Logo, Icon } from "./ui";
 import { Home, Detail, NewProposal, My, Guide } from "./pages/Proposals";
 import { Vote, Results } from "./pages/Voting";
-import { Login, Signup } from "./pages/Authentication";
+import { Login, Signup, Welcome } from "./pages/Authentication";
 import { Notifications, NotificationsBell } from "./pages/Notifications";
 import { Enrollments, Admin } from "./pages/Management";
 function Protected({ children, admin = false }) {
   const { user, loading } = useContext(Auth);
+  const location = useLocation();
   if (loading)
     return (
       <p className="empty" role="status">
         세션을 확인하고 있습니다.
       </p>
     );
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
   if (admin && !demoMode && !["ADMIN", "SUPER_ADMIN"].includes(user.role))
     return <ErrorBox error="관리자만 접근할 수 있습니다." />;
   return children;
@@ -32,7 +33,9 @@ export default function App() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(null);
   const location = useLocation();
-  const authPage = ["/login", "/signup"].includes(location.pathname),
+  const welcomePage = location.pathname === "/" && !loading && !user;
+  const authPage =
+      welcomePage || ["/login", "/signup"].includes(location.pathname),
     adminPage = location.pathname.startsWith("/admin");
   async function reload() {
     setLoading(true);
@@ -69,24 +72,26 @@ export default function App() {
           <header className="site-header">
             <div className="header-inner">
               <Logo />
-              <nav aria-label="주 메뉴">
-                <NavLink
-                  to="/"
-                  end
-                  className={({ isActive }) =>
-                    isActive || location.pathname.startsWith("/proposals/")
-                      ? "active"
-                      : ""
-                  }
-                >
-                  수업제안
-                </NavLink>
-                <NavLink to="/enrollments">수강신청</NavLink>
-                <NavLink to="/my">내 수업</NavLink>
-              </nav>
+              {!authPage && user && (
+                <nav aria-label="주 메뉴">
+                  <NavLink
+                    to="/"
+                    end
+                    className={({ isActive }) =>
+                      isActive || location.pathname.startsWith("/proposals/")
+                        ? "active"
+                        : ""
+                    }
+                  >
+                    수업 제안
+                  </NavLink>
+                  <NavLink to="/enrollments">수강신청</NavLink>
+                  <NavLink to="/my">내 활동</NavLink>
+                </nav>
+              )}
               <div className="account">
-                {user && <NotificationsBell />}
-                {user ? (
+                {!authPage && user && <NotificationsBell />}
+                {!authPage && user ? (
                   <>
                     <Link className="profile" to="/my">
                       <span>
@@ -94,23 +99,25 @@ export default function App() {
                       </span>
                       {user.name}
                     </Link>
-                    {
-                      <button className="quiet" onClick={logout}>
-                        로그아웃
-                      </button>
-                    }
+                    <button className="quiet" onClick={logout}>
+                      로그아웃
+                    </button>
                   </>
                 ) : (
                   <>
                     <Link to="/login">로그인</Link>
-                    <Link to="/signup">회원가입</Link>
+                    {location.pathname !== "/signup" && (
+                      <Link className="button" to="/signup">
+                        회원가입
+                      </Link>
+                    )}
                   </>
                 )}
               </div>
             </div>
           </header>
         )}
-        {demoMode && (
+        {demoMode && !authPage && user && (
           <div className="mode-banner">
             체험 모드 · 예시 데이터 / 내 응답은 이 브라우저에만 저장됩니다.
           </div>
@@ -121,9 +128,13 @@ export default function App() {
             <Route
               path="/"
               element={
-                <Protected>
-                  <Home />
-                </Protected>
+                welcomePage ? (
+                  <Welcome />
+                ) : (
+                  <Protected>
+                    <Home />
+                  </Protected>
+                )
               }
             />
             <Route path="/login" element={<Login />} />
@@ -205,13 +216,13 @@ export default function App() {
             />
           </Routes>
         </main>
-        {!authPage && !adminPage && (
+        {!authPage && !adminPage && user && (
           <>
             <nav className="bottom-nav" aria-label="모바일 메뉴">
               {[
                 ["/", "home", "제안"],
                 ["/enrollments", "check", "수강신청"],
-                ["/my", "user", "내 수업"],
+                ["/my", "user", "내 활동"],
               ].map(([path, icon, label]) => (
                 <NavLink
                   key={path}
@@ -220,8 +231,7 @@ export default function App() {
                   className={({ isActive }) =>
                     isActive ||
                     (path === "/" &&
-                      (location.pathname.includes("/vote") ||
-                        location.pathname.endsWith("/result")))
+                      location.pathname.startsWith("/proposals/"))
                       ? "active"
                       : ""
                   }
@@ -237,7 +247,6 @@ export default function App() {
               {(demoMode || ["ADMIN", "SUPER_ADMIN"].includes(user?.role)) && (
                 <Link to="/admin">관리자 검토{demoMode ? " 체험" : ""}</Link>
               )}
-              <Link to="/login">로그인 화면</Link>
             </footer>
           </>
         )}

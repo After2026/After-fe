@@ -1380,18 +1380,6 @@ legend {
   grid-template-columns: 230px minmax(0, 1fr);
   gap: 30px;
 }
-.signup-steps p {
-  padding: 13px;
-  margin: 0 0 7px;
-  font-size: 11px;
-  color: #8694a9;
-}
-.signup-steps .current {
-  color: var(--primary);
-  background: #e8edff;
-  border: 1px solid #b9cafa;
-  border-radius: 7px;
-}
 .signup-steps .info {
   margin-top: 26px;
   font-size: 10px;
@@ -1869,7 +1857,13 @@ footer > span {
     margin-bottom: 0;
   }
   .vote-tools {
-    display: none;
+    flex-wrap: wrap;
+    margin-bottom: 12px;
+    color: var(--muted);
+  }
+  .vote-tools .quiet {
+    min-height: 40px;
+    font-size: 12px;
   }
   .slots-grid {
     display: block;
@@ -1937,9 +1931,8 @@ footer > span {
     border: 0;
     padding: 0;
   }
-  .response-summary .mini-heading,
   .response-summary .progress {
-    display: none;
+    margin-bottom: 12px;
   }
   .response-summary > button {
     padding: 14px;
@@ -2231,21 +2224,7 @@ footer > span {
     display: block;
   }
   .signup-steps {
-    display: flex;
-    gap: 10px;
-    border-top: 3px solid var(--primary);
     margin-bottom: 20px;
-  }
-  .signup-steps p {
-    padding: 9px 2px;
-    font-size: 9px;
-    flex: 1;
-    text-align: center;
-    margin: 0;
-  }
-  .signup-steps p.current {
-    background: transparent;
-    border: 0;
   }
   .signup-steps .info {
     display: none;
@@ -2401,3 +2380,220 @@ footer > span {
     font-size: 10px;
   }
 }
+
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url("./assets/pretendard-variable.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  font-family: "Pretendard Variable", "Apple SD Gothic Neo", sans-serif;
+  color: #1a1c20;
+  background: #f3f4f5;
+  --primary: #2350c8;
+  --primary-soft: #e6edfc;
+  --primary-hover: #163a99;
+  --muted: #555d6d;
+  --border: #dcdee3;
+  --orange: #c25a12;
+}
+
+button:not(:disabled):not(.quiet):not(.icon-button):hover,
+.button:not(.quiet):hover {
+  border-color: var(--primary-hover);
+}
+.brand {
+  flex: none;
+  min-width: 0;
+}
+.brand-text {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.brand-text strong {
+  font-size: 20px;
+  font-weight: 800;
+}
+.brand-text > span {
+  font-size: 12px;
+  font-weight: 500;
+}
+.logo-symbol {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  box-shadow: none;
+}
+.site-header .account { flex-shrink: 0; }
+.site-header nav a { white-space: nowrap; }
+.auth-shell .site-header { height: 64px; }
+.auth-shell .account { display: flex; gap: 12px; }
+.auth-shell .account > a { white-space: nowrap; }
+.auth-shell .account > a:not(.button) { padding: 8px 4px; }
+.auth-shell:has(.welcome-layout) { background: white; min-height: 100vh; }
+
+.welcome-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 32px;
+  max-width: 1220px;
+  padding: clamp(42px, 8vw, 105px) 28px;
+  margin: auto;
+}
+.welcome-copy h1 {
+  margin: 0;
+  font-size: clamp(36px, 5vw, 68px);
+  line-height: 1.12;
+  letter-spacing: -.04em;
+}
+.welcome-copy h1 span { color: var(--primary); }
+.welcome-copy > p {
+  max-width: 28em;
+  font-size: 17px;
+  line-height: 1.65;
+  color: var(--muted);
+}
+.welcome-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 24px 0 10px;
+}
+.welcome-actions > * {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  border-radius: 12px;
+  font-size: 15px;
+}
+.welcome-bandi {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  width: min(100%, 446px);
+  margin: auto;
+  border-radius: 50%;
+  background: var(--primary-soft);
+}
+.welcome-bandi img { width: 80%; height: auto; }
+.after-steps,
+.login-story .after-steps {
+  list-style: none;
+  counter-reset: after-step;
+  padding: 0;
+  margin: 22px 0 0;
+  display: grid;
+  gap: 14px;
+}
+.after-steps li,
+.login-story .after-steps li {
+  counter-increment: after-step;
+  position: relative;
+  padding: 0 0 0 40px;
+  margin: 0;
+  min-height: 30px;
+  font-size: 15px;
+}
+.after-steps li::before,
+.login-story .after-steps li::before {
+  content: counter(after-step);
+  position: absolute;
+  left: 0;
+  top: 2px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+}
+.after-steps li span,
+.login-story .after-steps li span {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.login-story {
+  justify-content: flex-start;
+  gap: 36px;
+  padding: clamp(28px, 5vw, 72px);
+  background: var(--primary-soft);
+  color: #1a1c20;
+}
+.login-story h1 { color: inherit; margin: 0; }
+.login-story > small { color: var(--muted); }
+.login-form {
+  position: relative;
+  padding: clamp(32px, 6vw, 80px) clamp(24px, 5vw, 64px);
+}
+.login-form h2 { display: block; margin: 0 0 24px; font-size: 28px; }
+.login-form .field > label { display: block; margin-bottom: 8px; }
+.login-bandi {
+  display: block;
+  width: 64px;
+  height: 64px;
+  margin: 18px 0 0 auto;
+}
+.signup-steps ol {
+  display: grid;
+  list-style-position: inside;
+  padding: 0;
+  margin: 0;
+  gap: 6px;
+}
+.signup-steps li {
+  padding: 12px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.signup-steps li[aria-current] {
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 700;
+}
+
+@media (max-width: 850px) {
+  .header-inner { gap: 14px; }
+  .site-header nav a { padding-inline: 8px; }
+  .site-header .account { gap: 10px; }
+}
+@media (max-width: 700px) {
+  .header-inner { padding-inline: 16px; }
+  .site-header .brand-text > span { display: none; }
+  .logo-symbol { width: 32px; height: 32px; }
+  .auth-shell .site-header { display: block; }
+  .welcome-layout {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 32px 20px 44px;
+  }
+  .welcome-bandi { width: min(56vw, 250px); grid-row: 1; }
+  .login-story { min-height: 0; }
+  .login-story .brand { margin-bottom: 22px; }
+  .login-story .after-steps { display: flex; flex-wrap: wrap; gap: 12px; }
+  .login-story .after-steps li {
+    padding: 0 0 0 28px;
+    background: transparent;
+    border: 0;
+    font-size: 12px;
+  }
+  .login-story .after-steps li::before { width: 22px; height: 22px; top: 0; }
+  .login-story .after-steps li span { display: none; }
+  .signup-steps ol { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .signup-steps li { padding: 8px; }
+}
+
+.notification-bell.active {
+  border-radius: 8px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.search .icon-button { white-space: nowrap; }

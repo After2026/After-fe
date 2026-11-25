@@ -4,6 +4,8 @@ import { statuses, categories } from "./lib/service";
 export const Auth = createContext(null);
 export function Icon({ name, size = 18, ...props }) {
   const paths = {
+    bulb: <path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2V16h5.2v-.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3ZM9.5 18.5h5M10.5 21h3" />,
+    eye: <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z M12 9a3 3 0 1 0 0 6 3 3 0 1 0 0-6Z" />,
     home: (
       <>
         <path d="M4 8h16v12H4zM8 8V4h8v4M9 12h6M9 16h6" />
@@ -73,7 +75,8 @@ export function Icon({ name, size = 18, ...props }) {
 export function Logo() {
   return (
     <Link className="brand" to="/">
-      <span className="logo-symbol">✿</span>우리가 만드는 방과후
+      <span className="logo-symbol"><Icon name="bulb" size={21} /></span>
+      <span className="brand-text"><strong>After</strong><span>우리가 만드는 방과후</span></span>
     </Link>
   );
 }

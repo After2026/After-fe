@@ -59,7 +59,7 @@ export function Home() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">2026학년도 2학기 · 제안·수요조사 기간</p>
-          <h1>수업제안</h1>
+          <h1>수업 제안</h1>
           <p className="subtitle">
             배우고 싶은 수업에 관심을 모아, 우리의 방과후를 만들어요.
           </p>
@@ -104,10 +104,11 @@ export function Home() {
               value={q}
               onChange={(e) => setQ(e.target.value)}
               aria-label="수업 검색"
+              type="search"
               placeholder="듣고 싶은 수업 검색"
             />
             <button className="icon-button" aria-label="검색">
-              ↵
+              검색
             </button>
           </form>
           <div className="filter-section">
@@ -671,7 +672,7 @@ export function My() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">마이페이지</p>
-          <h1>내 수업</h1>
+          <h1>내 활동</h1>
         </div>
       </div>
       <section className="my-section">

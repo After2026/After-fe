@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState, useContext } from "react";
-import { service, demoMode } from "../lib/service";
+import { service, demoMode, categories } from "../lib/service";
 import {
   Resource,
   useResource,
@@ -19,13 +19,16 @@ export function Enrollments() {
       ]),
     ),
     [busy, setBusy] = useState(null),
+    [message, setMessage] = useState(""),
     [error, setError] = useState(null);
   async function act(course, enrollment) {
     setBusy(course.id);
     setError(null);
+    setMessage("");
     try {
       if (enrollment) await service.cancelEnrollment(enrollment.id);
       else await service.enroll(course.id);
+      setMessage(enrollment ? "수강신청을 취소했습니다." : "수강신청이 완료되었습니다.");
       r.reload();
     } catch (e) {
       setError(e);
@@ -50,6 +53,7 @@ export function Enrollments() {
           자격은 서버에서 확인해야 합니다.
         </p>
       )}
+      {message && <p className="success" role="status">{message}</p>}
       <Resource resource={r}>
         {([courses, enrollments, interests]) => (
           <>
@@ -199,17 +203,18 @@ export function Admin() {
   const list = useResource(() => service.reviewList()),
     [selected, setSelected] = useState(null),
     [message, setMessage] = useState("");
-  const current = selected || list.data?.items[0]?.id;
+  const items = list.data?.items ?? [];
+  const current = items.find((p) => p.id === selected)?.id ?? items[0]?.id;
   return (
     <div className="admin-layout">
       <aside className="admin-sidebar">
         <h2>방과후 관리</h2>
         <p className="muted">{user?.name}</p>
-        <a className="admin-selected" href="#review">
-          제안 검토 <span>●</span>
-        </a>
-        <a href="/enrollments">개설 · 신청 확인</a>
-        <a href="/">학생 화면으로</a>
+        <Link className="admin-selected" to="/admin" aria-current="page">
+          제안 검토
+        </Link>
+        <Link to="/enrollments">개설 · 신청 확인</Link>
+        <Link to="/">학생 화면으로</Link>
         {demoMode && (
           <p>
             관리자 화면 체험
@@ -238,6 +243,7 @@ export function Admin() {
                 {data.items.map((p) => (
                   <button
                     className={`review-item ${p.id === current ? "selected" : ""}`}
+                    aria-pressed={p.id === current}
                     onClick={() => {
                       setSelected(p.id);
                       setMessage("");
@@ -245,7 +251,7 @@ export function Admin() {
                     key={p.id}
                   >
                     <small>
-                      {p.targetGrades?.join("~")}학년 · {p.category}
+                      {p.targetGrades?.join("~")}학년 · {categories[p.category] || p.category}
                     </small>
                     <strong>{p.title}</strong>
                     <span>관심 {p.interestCount}명 · 검토 대기</span>
