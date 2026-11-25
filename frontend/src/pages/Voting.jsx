@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useContext } from "react";
 import { Link, useParams } from "react-router-dom";
 import { service } from "../lib/service";
-import { Resource, useResource, ErrorBox, date, Progress } from "../ui";
+import { Auth, Resource, useResource, ErrorBox, date } from "../ui";
 const options = [
   ["AVAILABLE", "✓", "가능"],
   ["ADJUSTABLE", "△", "조정 가능"],
@@ -15,11 +15,11 @@ export function Vote() {
     );
   return (
     <Resource resource={r}>
-      {([p, v]) => <VoteForm key={id} p={p} v={v} />}
+      {([p, v]) => <VoteForm key={id} p={p} v={v} reload={r.reload} />}
     </Resource>
   );
 }
-function VoteForm({ p, v }) {
+function VoteForm({ p, v, reload }) {
   const [answers, setAnswers] = useState(
       Object.fromEntries(
         (v.responses || []).map((r) => [r.slotId, r.availability]),
@@ -35,6 +35,7 @@ function VoteForm({ p, v }) {
   }, []);
   const closed = !v.deadline || new Date(v.deadline) <= now,
     allowed = v.canVote && !closed,
+    requiresInterest = v.requiresInterest ?? p.requiresInterest ?? (p.responsibleTeacherId == null),
     answered = v.slots.filter((s) => answers[s.id]).length;
   async function submit(e) {
     e.preventDefault();
@@ -50,7 +51,8 @@ function VoteForm({ p, v }) {
       setSaved(true);
       setError(null);
     } catch (e) {
-      setError(e);
+      if (["VOTE_CLOSED", "INVALID_STATE"].includes(e.code)) reload();
+      else setError(e);
     } finally {
       setBusy(false);
     }
@@ -63,7 +65,7 @@ function VoteForm({ p, v }) {
       <div className="page-heading">
         <div>
           <div className="vote-heading-meta">
-            <span className="tag navy">일정투표중</span>
+            <span className="tag navy">{closed ? "투표 마감" : "일정 투표"}</span>
             <span>마감 {date(v.deadline)}</span>
           </div>
           <h1>{p.title}</h1>
@@ -134,11 +136,11 @@ function VoteForm({ p, v }) {
               ];
               return (
                 <div className="vote-slot" key={slot.id}>
-                  <b>{slot.day}</b>
+                  <b>{slot.label ?? slot.day}</b>
                   <button
                     className={`vote-cell ${value}`}
                     type="button"
-                    aria-label={`${slot.day} · ${label} · 응답 바꾸기`}
+                    aria-label={`${slot.label ?? slot.day} · ${label} · 응답 바꾸기`}
                     disabled={!allowed || busy}
                     onClick={() => {
                       setAnswers((previous) => ({
@@ -160,7 +162,11 @@ function VoteForm({ p, v }) {
               error={
                 closed
                   ? "투표가 마감되었거나 아직 기간이 정해지지 않았습니다."
-                  : "참여 의향 1·2로 관심 표시한 학생만 투표할 수 있습니다."
+                  : v.eligible
+                    ? "지금은 투표에 참여할 수 없습니다."
+                    : requiresInterest
+                      ? "대상 학년 중 참여 의향 1·2로 관심을 표시한 학생이 투표할 수 있습니다."
+                      : "수업 대상 학년의 학생이 투표할 수 있습니다."
               }
             />
           )}
@@ -173,7 +179,6 @@ function VoteForm({ p, v }) {
                 {answered}/{v.slots.length}
               </b>
             </div>
-            <Progress value={answered} max={v.slots.length} />
             <button
               className="block"
               disabled={
@@ -211,7 +216,7 @@ function VoteForm({ p, v }) {
             <p className="muted">
               마감 {date(v.deadline)} (한국 시간)
               <br />
-              최종 일정은 관리자가 결정합니다.
+              {requiresInterest ? "최종 일정은 관리자가 확정합니다." : "담당 선생님이 투표 마감 후 수업 시간을 확정합니다."}
             </p>
           </section>
         </aside>
@@ -220,6 +225,7 @@ function VoteForm({ p, v }) {
   );
 }
 export function Results() {
+  const { user } = useContext(Auth);
   const { id } = useParams(),
     r = useResource(
       () => Promise.all([service.detail(id), service.result(id)]),
@@ -227,93 +233,105 @@ export function Results() {
     );
   return (
     <Resource resource={r}>
-      {([p, result]) => (
-        <section className="results-page">
-          <Link className="back" to={`/proposals/${id}`}>
-            ‹ 투표 결과
-          </Link>
-          <div className="result-header">
-            <div>
-              <span className="tag CONFIRMED">응답 현황</span>
-              <h1>{p.title}</h1>
-              <p className="muted">요일별 투표 현황을 확인하세요.</p>
-            </div>
-            <section className="dark-panel result-callout">
-              <small>일정 투표 결과</small>
-              <h2>{result.totalRespondents}명 응답</h2>
-              <p>최종 일정은 관리자가 결정합니다.</p>
-              <small>권고 일정과 개설 확정은 별도로 안내됩니다.</small>
-            </section>
-          </div>
-          <div className="results-layout">
-            <section className="panel">
-              <h2>후보 시간별 참여 가능 인원</h2>
-              <div className="result-heatmap">
-                {result.slots.map((s) => (
-                  <div key={s.id}>
-                    <b>{s.day}</b>
-                    <div
-                      className={`heat-cell ${s.availableCount ? "has-votes" : ""}`}
-                    >
-                      <strong>{s.availableCount}명</strong>
-                      <small>참여 가능</small>
-                    </div>
-                  </div>
-                ))}
+      {([p, result]) => {
+        const confirmedSlot = result.slots.find((slot) => slot.id === (result.confirmedSlotId ?? p.timeSlotId));
+        const confirmedTime = p.courseTime ?? confirmedSlot?.label ?? confirmedSlot?.day;
+        const teacherVote = p.requiresInterest === false || p.responsibleTeacherId != null;
+        const canEdit = user?.role === "STUDENT" && p.targetGrades?.includes(user.grade) &&
+          p.status === "VOTING" && new Date(p.voteDeadline).getTime() > Date.now();
+        return (
+          <section className="results-page">
+            <Link className="back" to={`/proposals/${id}`}>
+              ‹ 투표 결과
+            </Link>
+            <div className="result-header">
+              <div>
+                <span className="tag CONFIRMED">응답 현황</span>
+                <h1>{p.title}</h1>
+                <p className="muted">후보 시간별 투표 현황을 확인하세요.</p>
               </div>
-              <div className="heat-legend">
-                <span>적음</span>
-                <i />
-                <i />
-                <i />
-                <i />
-                <span>많음</span>
-              </div>
-              {!result.slots.length && (
-                <p className="empty">아직 후보 시간이 없습니다.</p>
-              )}
-            </section>
-            <aside>
-              <section className="panel">
-                <h2>요일별 결과</h2>
-                {result.slots.map((s) => (
-                  <div className="day-result" key={s.id}>
-                    <div>
-                      <b>{s.day}</b>
-                      <strong>{s.availableCount + s.adjustableCount}명</strong>
-                    </div>
-                    <div className="stacked-bar">
-                      <span
-                        style={{
-                          width: `${(s.availableCount / (result.totalRespondents || 1)) * 100}%`,
-                        }}
-                      />
-                      <i
-                        style={{
-                          width: `${(s.adjustableCount / (result.totalRespondents || 1)) * 100}%`,
-                        }}
-                      />
-                    </div>
-                    <small>
-                      가능 {s.availableCount}명 · 조정 가능 {s.adjustableCount}
-                      명 · 불가 {s.unavailableCount}명
-                    </small>
-                  </div>
-                ))}
+              <section className="dark-panel result-callout">
+                <small>일정 투표 결과</small>
+                <h2>{result.totalRespondents}명 응답</h2>
+                {confirmedTime ? (
+                  <p>확정된 수업 시간 {confirmedTime}</p>
+                ) : (
+                  <p>{teacherVote ? "투표가 끝나면 담당 선생님이 수업 시간을 확정합니다." : "최종 일정은 관리자가 확정합니다."}</p>
+                )}
               </section>
-              <Link className="button block" to="/enrollments">
-                수강신청 화면 가기 →
-              </Link>
-              <div className="results-actions">
-                <button className="quiet" onClick={r.reload}>
-                  결과 새로고침
-                </button>
-                <Link to={`/proposals/${id}/vote`}>내 투표 수정</Link>
-              </div>
-            </aside>
-          </div>
-        </section>
-      )}
+            </div>
+            <div className="results-layout">
+              <section className="panel">
+                <h2>후보 시간별 참여 가능 인원</h2>
+                <div className="result-heatmap">
+                  {result.slots.map((s) => (
+                    <div key={s.id}>
+                      <b>{s.label ?? s.day}</b>
+                      <div
+                        className={`heat-cell ${s.availableCount ? "has-votes" : ""}`}
+                      >
+                        <strong>{s.availableCount}명</strong>
+                        <small>참여 가능</small>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="heat-legend">
+                  <span>적음</span>
+                  <i />
+                  <i />
+                  <i />
+                  <i />
+                  <span>많음</span>
+                </div>
+                {!result.slots.length && (
+                  <p className="empty">아직 후보 시간이 없습니다.</p>
+                )}
+              </section>
+              <aside>
+                <section className="panel">
+                  <h2>후보 시간별 결과</h2>
+                  {result.slots.map((s) => (
+                    <div className="day-result" key={s.id}>
+                      <div>
+                        <b>{s.label ?? s.day}</b>
+                        <strong>{s.availableCount + s.adjustableCount}명</strong>
+                      </div>
+                      <div className="stacked-bar">
+                        <span
+                          style={{
+                            width: `${(s.availableCount / (result.totalRespondents || 1)) * 100}%`,
+                          }}
+                        />
+                        <i
+                          style={{
+                            width: `${(s.adjustableCount / (result.totalRespondents || 1)) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      <small>
+                        가능 {s.availableCount}명 · 조정 가능 {s.adjustableCount}
+                        명 · 불가 {s.unavailableCount}명
+                      </small>
+                    </div>
+                  ))}
+                </section>
+                {user?.role === "TEACHER" ? (
+                  <Link className="button block" to="/teacher">선생님 화면으로</Link>
+                ) : confirmedTime && (
+                  <Link className="button block" to="/enrollments">수강신청 화면 가기 →</Link>
+                )}
+                <div className="results-actions">
+                  <button className="quiet" onClick={r.reload}>
+                    결과 새로고침
+                  </button>
+                  {canEdit && <Link to={`/proposals/${id}/vote`}>내 투표 수정</Link>}
+                </div>
+              </aside>
+            </div>
+          </section>
+        );
+      }}
     </Resource>
   );
 }

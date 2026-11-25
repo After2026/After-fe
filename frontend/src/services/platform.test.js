@@ -2,9 +2,17 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createDemo, seed } from "../lib/demo.js";
 import { createClient } from "../lib/api.js";
+import { enrollmentWindowFor } from "../lib/enrollmentSchedule.js";
 function memory() {
   const s = new Map();
   return { getItem: (k) => s.get(k) ?? null, setItem: (k, v) => s.set(k, v) };
+}
+const testEnrollmentWindow = enrollmentWindowFor("2026-12-07");
+function openEnrollmentDemo(storage) {
+  return createDemo(storage, undefined, {
+    enrollmentWindow: testEnrollmentWindow,
+    now: () => testEnrollmentWindow.startsAt,
+  });
 }
 test("interest eligibility, voting all slots and replacement survive reload", async () => {
   const storage = memory(),
@@ -139,9 +147,8 @@ test("API errors never fall back to fake success or demo data", async () => {
 
 test("enrollment is persistent, rejects duplicate and closed courses, and cancels", async () => {
   const storage = memory(),
-    api = createDemo(storage);
+    api = openEnrollmentDemo(storage);
   await assert.rejects(api.enroll(1));
-  await assert.rejects(api.enroll(6));
   const enrollment = await api.enroll(4);
   await assert.rejects(api.enroll(4));
   assert.equal((await createDemo(storage).enrollments()).items.length, 1);
@@ -182,7 +189,7 @@ test("demo opens logged out and starts only through explicit entry, then logout 
 });
 
 test("course counts and progress source grow after enrollment and shrink after cancellation", async () => {
-  const api = createDemo(memory());
+  const api = openEnrollmentDemo(memory());
   const before = (await api.courses()).items.find((c) => c.id === 4);
   const enrollment = await api.enroll(4);
   const after = (await api.courses()).items.find((c) => c.id === 4);

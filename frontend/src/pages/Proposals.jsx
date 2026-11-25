@@ -13,10 +13,11 @@ import {
   date,
 } from "../ui";
 
+const listingStatuses = ["SURVEYING", "VOTING"];
 const proposalSorts = [
-  ["interest", "관심 인원순"],
   ["latest", "최신순"],
   ["deadline", "마감 임박순"],
+  ["interest", "관심 인원순"],
 ];
 
 export function Home() {
@@ -29,7 +30,7 @@ export function Home() {
     [category, setCategory] = useState(""),
     [selectedStatuses, setStatuses] = useState([]),
     [selectedGrades, setGrades] = useState([]),
-    [sort, setSort] = useState("interest");
+    [sort, setSort] = useState("latest");
   const [interests, proposals] = summary.data ?? [];
   const filters = {
     q: query,
@@ -101,13 +102,7 @@ export function Home() {
           </form>
           <fieldset className="filter-section">
             <legend className="filter-label">상태</legend>
-            {["SURVEYING", "VOTING"].map(statusOption)}
-            <details className="additional-filters">
-              <summary>다른 상태</summary>
-              {Object.keys(statuses)
-                .filter((key) => !["SURVEYING", "VOTING"].includes(key))
-                .map(statusOption)}
-            </details>
+            {listingStatuses.map(statusOption)}
           </fieldset>
           <fieldset className="filter-section">
             <legend className="filter-label">분류</legend>
@@ -179,6 +174,7 @@ async function loadProposalPage({ statuses, grades, ...filters }, cursor) {
     });
     const items = result.items.filter(
       (proposal) =>
+        listingStatuses.includes(proposal.status) &&
         (!statuses.length || statuses.includes(proposal.status)) &&
         (!grades.length ||
           proposal.targetGrades?.some((grade) => grades.includes(grade))),
@@ -192,6 +188,7 @@ async function loadProposalPage({ statuses, grades, ...filters }, cursor) {
 }
 
 function ProposalList({ filters, interests, setSort }) {
+  const { user } = useContext(Auth);
   const r = useResource(() => loadProposalPage(filters), [filters.sort]);
   const [page, setPage] = useState(null);
   const [loadingSort, setLoadingSort] = useState(null);
@@ -253,6 +250,7 @@ function ProposalList({ filters, interests, setSort }) {
                     key={p.id}
                     p={p}
                     listing
+                    ownProposal={isProposalOwner(p, user)}
                     interested={interestedIds.has(String(p.id))}
                   />
                 ))}
@@ -278,11 +276,10 @@ function ProposalList({ filters, interests, setSort }) {
 }
 
 const proposalStages = [
-  ["수업 제안 · 임시저장", ["DRAFT"]],
-  ["공동제안 동의 · 제출", ["SUBMITTED"]],
+  ["수업 제안", ["DRAFT"]],
   [
-    "검토 · 수요조사",
-    ["REVIEWING", "SURVEYING", "ON_HOLD", "REJECTED", "BELOW_THRESHOLD"],
+    "선생님 접수",
+    ["SUBMITTED", "REVIEWING", "SURVEYING", "ON_HOLD", "REJECTED", "BELOW_THRESHOLD"],
   ],
   ["일정 투표", ["VOTING"]],
   ["개설 확정 · 수강신청", ["CONFIRMED", "ENROLLING", "RUNNING"]],
@@ -298,6 +295,62 @@ function proposalReference(value) {
   return null;
 }
 
+function isProposalOwner(proposal, user) {
+  if (user?.role !== "STUDENT") return false;
+  return proposal.proposerId == null
+    ? demoMode && proposal.proposerName === user.name
+    : proposal.proposerId === user.id;
+}
+
+function canEditProposal(proposal, user) {
+  return isProposalOwner(proposal, user) && (
+    proposal.canEdit ?? (
+      ["DRAFT", "SUBMITTED", "SURVEYING"].includes(proposal.status) &&
+      !proposal.voteStartAt && !proposal.voteDeadline
+    )
+  );
+}
+
+function ProposalOwnerActions({ proposal, user }) {
+  const navigate = useNavigate();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const canEdit = canEditProposal(proposal, user);
+  const canDelete = isProposalOwner(proposal, user) && (
+    proposal.canDelete ?? (canEdit || (proposal.status === "REJECTED" && !proposal.voteDeadline))
+  );
+  if (!canEdit && !canDelete) return null;
+
+  async function remove() {
+    if (!window.confirm("이 수업 제안을 삭제할까요? 삭제하면 목록에서 사라집니다.")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await service.deleteProposal(proposal.id);
+      navigate("/my", { replace: true });
+    } catch (error) {
+      setError(error);
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div>
+      <div className="proposal-owner-actions">
+        {canEdit && (
+          <Link className="button quiet" to={`/proposals/${proposal.id}/edit`}>수정하기</Link>
+        )}
+        {canDelete && (
+          <button className="danger-outline" type="button" disabled={busy} onClick={remove}>
+            {busy ? "삭제 중…" : "삭제하기"}
+          </button>
+        )}
+      </div>
+      {error && <ErrorBox error={error} />}
+    </div>
+  );
+}
+
 export function Detail() {
   const { id } = useParams(),
     { user } = useContext(Auth),
@@ -306,8 +359,19 @@ export function Detail() {
     <Resource resource={r}>
       {(p) => {
         const reference = proposalReference(p.referenceUrl);
+        const teacherVote = p.requiresInterest === false || p.responsibleTeacherId != null;
+        const awaitingConfirmation = teacherVote && p.status === "REVIEWING";
+        const showVote = p.status === "VOTING" || awaitingConfirmation;
         const deadline =
-          p.status === "VOTING" ? p.voteDeadline : p.surveyDeadline;
+          showVote ? p.voteDeadline : p.surveyDeadline;
+        const legacySurvey = !p.awaitingTeacher && (
+          p.status === "SURVEYING" || (p.status === "VOTING" && !teacherVote)
+        );
+        const ownProposal = isProposalOwner(p, user);
+        const canSubmit = p.status === "DRAFT" && ownProposal;
+        const voteOpen = p.status === "VOTING" && deadline && new Date(deadline).getTime() > Date.now();
+        const canVote = user?.role === "STUDENT" && p.targetGrades?.includes(user.grade) && voteOpen;
+        const recommendedTeacher = p.recommendedTeacher ?? (p.status === "DRAFT" ? p.instructorName : null);
         return (
           <section className="proposal-detail">
             <Link className="back" to="/">
@@ -317,6 +381,7 @@ export function Detail() {
               <article className="panel detail-main">
                 <div className="detail-tags">
                   <Tag status={p.status} />
+                  {ownProposal && <span className="tag proposal-owner-badge">내 제안</span>}
                   <span>
                     {categories[p.category]} · {p.targetGrades?.join("~")}학년
                   </span>
@@ -324,7 +389,7 @@ export function Detail() {
                 <h1>{p.title}</h1>
                 <p className="muted">
                   제안자 {p.proposerName} · 희망 정원 {p.capacity || 20}명 ·{" "}
-                  {p.instructorType === "EXTERNAL" ? "외부 강사" : "교내 교사"}
+                  {instructorTypeLabel[p.instructorType] ?? "교내 교사"}
                 </p>
                 <div className="facts">
                   {[
@@ -332,9 +397,7 @@ export function Detail() {
                     ["희망 정원", `${p.capacity || 20}명`],
                     [
                       "희망 강사",
-                      p.instructorType === "EXTERNAL"
-                        ? "외부 강사"
-                        : "교내 교사",
+                      instructorTypeLabel[p.instructorType] ?? "교내 교사",
                     ],
                     ["수업 시기", "학기 중 방과후"],
                   ].map(([t, v]) => (
@@ -350,10 +413,10 @@ export function Detail() {
                 <p className="preline">
                   {p.activityPlan || "등록된 활동 계획이 없습니다."}
                 </p>
-                {(p.instructorName || reference) && (
+                {(recommendedTeacher || reference) && (
                   <>
                     <h2>희망 교사 추천 · 참고 링크</h2>
-                    {p.instructorName && <p>{p.instructorName}</p>}
+                    {recommendedTeacher && <p>{recommendedTeacher}</p>}
                     {reference && (
                       <a
                         className="quiet button"
@@ -369,43 +432,86 @@ export function Detail() {
               </article>
               <aside className="detail-aside">
                 <section className="panel">
-                  <h2>관심 수요</h2>
-                  <div className="demand">
-                    <strong>{p.interestCount}</strong>
-                    <span>/ {p.threshold}명</span>
-                    <Tag status={p.status} />
+                  <div className="mini-heading">
+                    <h2>{legacySurvey ? "관심 수요" : "제안 현황"}</h2>
+                    <ProposalOwnerActions key={p.id} proposal={p} user={user} />
                   </div>
-                  <Progress value={p.interestCount} max={p.threshold} />
-                  {deadline && <p className="muted">마감 {date(deadline)}</p>}
-                  {p.status === "VOTING" ? (
+                  {legacySurvey && (
                     <>
-                      <Link
-                        className="button block"
-                        to={`/proposals/${id}/vote`}
-                      >
-                        일정 투표하기
-                      </Link>
-                      <Link
-                        className="text-link"
-                        to={`/proposals/${id}/result`}
-                      >
-                        투표 결과 보기 →
-                      </Link>
+                      <div className="demand">
+                        <strong>{p.interestCount}</strong>
+                        <span>/ {p.threshold}명</span>
+                        <Tag status={p.status} />
+                      </div>
+                      <Progress value={p.interestCount} max={p.threshold} />
+                    </>
+                  )}
+                  {!legacySurvey && (
+                    <>
+                      <Progress value={p.interestCount} max={p.capacity} />
+                      <p className="muted">관심 {p.interestCount}명</p>
+                    </>
+                  )}
+                  {(showVote || p.status === "SURVEYING") && deadline && (
+                    <p className="muted">마감 {date(deadline)} (한국 시간)</p>
+                  )}
+                  {showVote ? (
+                    <>
+                      {teacherVote && (
+                        <p>
+                          {voteOpen
+                            ? "대상 학년 학생이 일정 투표에 참여할 수 있어요."
+                            : "투표가 마감됐어요. 담당 선생님이 수업 시간을 확정해요."}
+                        </p>
+                      )}
+                      <div className="detail-vote-actions">
+                        {canVote && (
+                          <Link className="button detail-vote-button" to={`/proposals/${id}/vote`}>
+                            일정 투표하기
+                          </Link>
+                        )}
+                        <Link
+                          className="text-link"
+                          to={`/proposals/${id}/result`}
+                        >
+                          투표 결과 보기 →
+                        </Link>
+                      </div>
                     </>
                   ) : p.status === "SURVEYING" ? (
-                    <Interest
-                      p={p}
-                      user={user}
-                      key={JSON.stringify(p.myInterest)}
-                      reload={r.reload}
-                    />
-                  ) : (
+                    <>
+                      {p.awaitingTeacher && (
+                        <p>선생님이 제안을 맡으면 대상 학년의 일정 투표가 시작돼요.</p>
+                      )}
+                      {ownProposal ? (
+                        <p className="muted">내가 올린 제안에는 관심을 표시할 수 없어요.</p>
+                      ) : (
+                        <Interest
+                          p={p}
+                          user={user}
+                          key={JSON.stringify(p.myInterest)}
+                          reload={r.reload}
+                        />
+                      )}
+                    </>
+                  ) : canSubmit ? (
+                    <SubmitProposal key={p.id} proposal={p} reload={r.reload} />
+                  ) : p.status === "SUBMITTED" ? (
+                    <p className="muted">선생님이 제안을 맡으면 대상 학년의 일정 투표가 시작됩니다.</p>
+                  ) : p.courseTime ? (
+                    <>
+                      <p>확정된 수업 시간 {p.courseTime}</p>
+                      {teacherVote && (
+                        <Link className="text-link" to={`/proposals/${id}/result`}>
+                          투표 결과 보기 →
+                        </Link>
+                      )}
+                    </>
+                  ) : p.status === "DRAFT" ? (
                     <p className="muted">
-                      {p.status === "DRAFT"
-                        ? "임시저장한 제안입니다. 공동제안자 동의 후 제출할 수 있습니다."
-                        : "현재 관심 표시 기간이 아닙니다."}
+                      아직 제출하지 않은 제안입니다.
                     </p>
-                  )}
+                  ) : <Tag status={p.status} />}
                 </section>
                 <section className="panel">
                   <h2>진행 단계</h2>
@@ -414,7 +520,7 @@ export function Detail() {
                       <li
                         key={label}
                         aria-current={
-                          values.includes(p.status) ? "step" : undefined
+                          values.includes(awaitingConfirmation ? "VOTING" : p.status) ? "step" : undefined
                         }
                       >
                         {label}
@@ -430,6 +536,35 @@ export function Detail() {
     </Resource>
   );
 }
+const instructorTypeLabel = { INTERNAL: "교내 교사", EXTERNAL: "외부 강사", ANY: "무관" };
+
+function SubmitProposal({ proposal, reload }) {
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function submit() {
+    setBusy(true);
+    setError(null);
+    try {
+      await service.submitProposal(proposal.id);
+      reload();
+    } catch (error) {
+      setError(error);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="proposal-submit">
+      <button className="block" disabled={busy} onClick={submit}>
+        {busy ? "제출 중…" : "선생님에게 제출하기"}
+      </button>
+      {error && <ErrorBox error={error} />}
+    </div>
+  );
+}
+
 function Interest({ p, user, reload }) {
   const [intent, setIntent] = useState(p.myInterest?.intentLevel || 0),
     [comment, setComment] = useState(p.myInterest?.comment || ""),
@@ -444,7 +579,7 @@ function Interest({ p, user, reload }) {
   const eligible =
     user?.role === "STUDENT" &&
     p.targetGrades.includes(user.grade) &&
-    new Date(p.surveyDeadline) > new Date();
+    (p.awaitingTeacher || Date.parse(p.surveyDeadline) > Date.now());
   async function act(cancel = false) {
     setBusy(true);
     try {
@@ -469,7 +604,9 @@ function Interest({ p, user, reload }) {
       >
         ♡ {p.myInterest ? "관심 표시 수정" : "관심 표시하기"}
       </button>
-      <p className="under-button">1인당 관심 표시 · 기간 내 수정 가능</p>
+      <p className="under-button">
+        {p.awaitingTeacher ? "일정 투표가 열리기 전까지 수정할 수 있어요." : "1인당 관심 표시 · 기간 내 수정 가능"}
+      </p>
       {p.myInterest && (
         <p className="saved-label" role="status">
           ✓ 관심 표시가 저장되었습니다.
@@ -553,14 +690,36 @@ function Interest({ p, user, reload }) {
   );
 }
 export function NewProposal() {
+  return <ProposalForm />;
+}
+
+export function EditProposal() {
+  const { id } = useParams();
+  const { user } = useContext(Auth);
+  const proposal = useResource(() => service.detail(id), [id]);
+  return (
+    <Resource resource={proposal}>
+      {(p) => canEditProposal(p, user) ? (
+        <ProposalForm key={p.id} proposal={p} />
+      ) : (
+        <section className="panel">
+          <ErrorBox error="일정 투표가 열리기 전까지 제안자만 수정할 수 있습니다." />
+          <Link className="button quiet" to={`/proposals/${id}`}>제안 상세로 돌아가기</Link>
+        </section>
+      )}
+    </Resource>
+  );
+}
+
+function ProposalForm({ proposal }) {
   const { user } = useContext(Auth),
     navigate = useNavigate();
   const [error, setError] = useState(null),
     [busy, setBusy] = useState(false),
-    [category, setCategory] = useState("IT"),
-    [grades, setGrades] = useState([1, 2]),
-    [capacity, setCapacity] = useState(20),
-    [instructorType, setInstructor] = useState("INTERNAL"),
+    [category, setCategory] = useState(proposal?.category ?? "IT"),
+    [grades, setGrades] = useState(proposal?.targetGrades ?? [1, 2]),
+    [capacity, setCapacity] = useState(proposal?.capacity ?? 20),
+    [instructorType, setInstructor] = useState(proposal?.instructorType ?? "INTERNAL"),
     [similar, setSimilar] = useState(null);
   async function submit(e) {
     e.preventDefault();
@@ -571,17 +730,25 @@ export function NewProposal() {
     }
     setBusy(true);
     try {
-      const p = await service.create({
+      const fields = {
         title: f.get("title").trim(),
         description: f.get("description").trim(),
-        activityPlan: f.get("activityPlan"),
+        activityPlan: f.get("activityPlan").trim(),
         category,
         targetGrades: grades,
         capacity,
         instructorType,
         instructorName: f.get("instructorName"),
         referenceUrl: f.get("referenceUrl"),
-      });
+      };
+      const p = proposal
+        ? await service.updateProposal(proposal.id, {
+            ...fields,
+            semesterId: proposal.semesterId,
+            equipment: proposal.equipment,
+            referenceLinks: proposal.referenceLinks,
+          })
+        : await service.create({ ...fields, publishForSurvey: true });
       navigate(`/proposals/${p.id}`);
     } catch (e) {
       setError(e);
@@ -605,16 +772,17 @@ export function NewProposal() {
     <section className="proposal-editor">
       <div className="page-heading">
         <div>
-          <p className="eyebrow">2026학년도 2학기</p>
-          <h1>새 수업 제안</h1>
+          {!proposal && <p className="eyebrow">2026학년도 2학기</p>}
+          <h1>{proposal ? "수업 제안 수정" : "새 수업 제안"}</h1>
           <p className="subtitle">
-            함께 배우고 싶은 수업을 제안해주세요. 공동제안자 동의 후 제출할 수
-            있습니다.
+            {proposal ? "일정 투표가 열리기 전까지 내용을 수정할 수 있어요." : "제안을 올리면 바로 수요조사가 시작돼요."}
           </p>
         </div>
-        <span className="tag">임시저장</span>
       </div>
-      <form className="editor-layout" onSubmit={submit}>
+      <form
+        className={proposal ? "editor-layout" : "editor-layout new-proposal-layout"}
+        onSubmit={submit}
+      >
         <div>
           <section className="panel">
             <h2>기본 정보</h2>
@@ -624,9 +792,11 @@ export function NewProposal() {
                 aria-label="수업명"
                 name="title"
                 required
-                maxLength={100}
+                minLength={2}
+                maxLength={30}
                 placeholder="예: 디스코드 봇 만들기 실습"
-                onBlur={check}
+                defaultValue={proposal?.title}
+                onBlur={proposal ? undefined : check}
               />
             </label>
             {similar?.items?.length > 0 && (
@@ -719,17 +889,21 @@ export function NewProposal() {
               <textarea
                 aria-label="제안 사유"
                 name="description"
+                defaultValue={proposal?.description}
                 required
-                minLength={10}
-                maxLength={3000}
+                minLength={demoMode ? 10 : 30}
+                maxLength={500}
                 placeholder="왜 이 수업이 필요한가요? 배우고 싶은 내용과 이유를 적어주세요."
               />
             </label>
             <label className="field">
-              활동 계획 (선택)
+              활동 계획 {demoMode ? "(선택)" : <span className="required">*</span>}
               <textarea
                 name="activityPlan"
-                maxLength={3000}
+                defaultValue={proposal?.activityPlan}
+                required={!demoMode}
+                minLength={demoMode ? undefined : 30}
+                maxLength={1000}
                 placeholder="예: 1~3주차 기초 문법, 4~6주차 미니 프로젝트"
               />
             </label>
@@ -763,48 +937,29 @@ export function NewProposal() {
                 추천하는 선생님 · 선택
                 <input
                   name="instructorName"
+                  defaultValue={proposal?.recommendedTeacher ?? proposal?.instructorName}
+                  maxLength={100}
                   placeholder="예: 정보 교과 선생님"
                 />
               </label>
               <label className="field">
                 참고 링크 · 선택
-                <input name="referenceUrl" type="url" placeholder="https://" />
+                <input name="referenceUrl" type="url" defaultValue={proposal?.referenceUrl} placeholder="https://" />
               </label>
             </div>
           </section>
         </div>
         <aside>
-          <section className="panel co-proposers">
-            <h2>
-              공동제안자 <span>0 / 5</span>
-            </h2>
-            <p className="muted">
-              친구 5명 이상의 동의를 모아 제출할 수 있어요.
-            </p>
-            <Progress value={0} max={5} />
-            <div className="avatars">
-              <span>나</span>
-              <span>+</span>
-              <span>+</span>
-              <span>+</span>
-              <span>+</span>
-            </div>
-            <p className="muted">
-              먼저 임시저장한 뒤 공동제안자를 초대해 주세요.
-            </p>
-          </section>
           <section className="panel">
             <button
-              className="block"
+              className="proposal-editor-submit"
               disabled={busy || user?.role !== "STUDENT"}
             >
-              {busy ? "저장 중…" : "임시저장"}
+              {proposal ? (busy ? "저장 중…" : "변경사항 저장") : (busy ? "제안 올리는 중…" : "제안 올리기")}
             </button>
-            <p className="muted">
-              공동제안 동의가 모이기 전까지 수정할 수 있습니다.
-            </p>
-            <Link className="quiet block" to="/">
-              나가기
+            {!proposal && <p className="muted">대상 학년 학생이 수요조사에 참여할 수 있어요.</p>}
+            <Link className="quiet block" to={proposal ? `/proposals/${proposal.id}` : "/"}>
+              {proposal ? "취소" : "나가기"}
             </Link>
             {error && <ErrorBox error={error} />}
           </section>
@@ -813,9 +968,20 @@ export function NewProposal() {
     </section>
   );
 }
+async function loadVotableProposals() {
+  const items = [];
+  let cursor;
+  do {
+    const page = await service.votableProposals({ cursor });
+    items.push(...page.items);
+    cursor = page.nextCursor;
+  } while (cursor);
+  return { items };
+}
+
 export function My() {
   const { user } = useContext(Auth);
-  const votes = useResource(() => service.list({ status: "VOTING" }));
+  const votes = useResource(loadVotableProposals);
   const r = useResource(() =>
     Promise.all([service.myInterests(), service.myProposals()]),
   );
@@ -937,15 +1103,15 @@ export function Guide() {
         [
           "01",
           "제안",
-          "배우고 싶은 수업을 제안하고 공동제안자 5명 이상의 동의를 모아요.",
+          "배우고 싶은 수업을 제안하면 바로 수요조사가 시작돼요.",
         ],
-        ["02", "관심 표시", "대상 학년의 수업에 참여 의향과 의견을 남겨요."],
+        ["02", "선생님 접수", "학교 선생님이 제안을 맡고 투표 후보 시간과 마감 일시를 정해요."],
         [
           "03",
           "일정 투표",
-          "참여 의향 1·2로 관심 표시한 학생은 후보 시간별 가능 여부를 투표해요.",
+          "대상 학년 학생이 후보 시간마다 참여할 수 있는지 투표해요.",
         ],
-        ["04", "수강신청", "최종 개설된 수업을 확인하고 신청해요."],
+        ["04", "개설 확정 · 수강신청", "투표가 마감되면 담당 선생님이 시간을 확정해요. 개설된 수업을 확인하고 신청해요."],
       ].map(([n, t, d]) => (
         <section className="panel guide-step" key={n}>
           <b>{n}</b>

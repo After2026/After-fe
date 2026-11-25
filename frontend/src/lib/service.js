@@ -1,8 +1,12 @@
 import { createClient } from "./api";
 import { createDemo } from "./demo";
+import { enrollmentWindowFor } from "./enrollmentSchedule";
 export const demoMode = import.meta.env.VITE_DATA_MODE !== "api";
+export const enrollmentWindow = enrollmentWindowFor(
+  import.meta.env.VITE_ENROLLMENT_DATE,
+);
 export const service = demoMode
-  ? createDemo()
+  ? createDemo(undefined, undefined, { enrollmentWindow })
   : createClient(import.meta.env.VITE_API_BASE_URL || "/api/v1");
 export const categories = {
   SUBJECT: "교과",

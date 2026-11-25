@@ -10,7 +10,7 @@
 - 목록 `{ items, nextCursor }`, 오류 `{ error: { code, message, details } }`
 - intentLevel: 1 반드시 신청, 2 시간이 맞으면 신청, 3 관심만
 - availability: AVAILABLE / ADJUSTABLE / UNAVAILABLE
-- 일정 투표는 의향 1·2 학생만, 기간 내 재응답 가능; 서버에서 최종 검증 필요
+- 선생님이 직접 시작한 일정 투표는 대상 학년 전체가 기간 내 참여·재응답할 수 있습니다. 이전 수요조사에서 시작한 투표에는 기존 참여 의향 요건을 적용합니다.
 
 ## 사용 경로와 가정한 JSON
 
@@ -23,6 +23,8 @@
 | POST /auth/refresh | 본문 없음 |
 | GET /proposals | query: `q,category,status,grade,sort,cursor,limit`; sort: interest/latest/deadline → `{items: Proposal[],nextCursor}` |
 | GET /proposals/{id} | `Proposal & {myInterest: {intentLevel,comment} | null}` |
+| PUT /proposals/{id} | 작성자가 일정 투표 시작 전 임시저장·제출·수요조사 중인 제안을 수정합니다. 제안 상세의 `canEdit`은 로그인한 사용자 기준입니다. |
+| DELETE /proposals/{id} | 작성자가 투표 시작 전 제안을 철회합니다. `ARCHIVED`로 보관하며 학생·교사 목록에서 제외합니다. `canDelete`로 삭제 버튼 표시 여부를 판단합니다. |
 | POST /proposals | `{title,description,category,targetGrades,instructorType}` → `Proposal` (DRAFT) |
 | PUT /proposals/{id}/interest | `{intentLevel,comment}` |
 | DELETE /proposals/{id}/interest | 본문 없음 |
@@ -44,17 +46,34 @@ type Slot = { id: number; day: string; period: number };
 type Response = { slotId: number; availability: 'AVAILABLE' | 'ADJUSTABLE' | 'UNAVAILABLE' };
 ```
 
-결과 점수의 가중치·동점 규칙은 첨부에 구체적으로 없으므로 임의 점수나 최종 선정 추천은 만들지 않습니다. 응답 인원만 표시하며 최종 결정은 관리자에게 있음을 안내합니다.
+화면은 후보별 응답 인원을 표시합니다. 교사 수락으로 시작한 투표는 마감 후 담당 선생님이 운영 시간을 선택합니다.
+
+## 학교 선생님의 제안 수락과 개설 확정
+
+| API | 연동 방식 |
+| --- | --- |
+| `POST /proposals` | 새 제안 화면은 `publishForSurvey: true`를 보내 즉시 `SURVEYING`으로 공개합니다. 응답의 `awaitingTeacher: true`는 선생님 수락 전까지 관심을 받을 수 있음을 뜻합니다. |
+| `POST /proposals/{id}/submit` | 기존 임시저장 제안은 이 경로로 제출합니다. 서버가 작성자와 접수 기간을 검증합니다. |
+| `GET /teacher/proposals` | 교사가 수락할 수 있는 수요조사 중 제안과 기존 제출 제안, 본인 담당 제안을 조회합니다. |
+| `GET /time-slots` | 학교에서 사용하는 월요일·수요일 운영 후보를 조회합니다. |
+| `POST /teacher/proposals/{id}/accept` | `{timeSlotIds, voteEndAt}`을 받아 담당 선생님과 후보를 저장하고 즉시 `VOTING`으로 전환합니다. |
+| `POST /teacher/proposals/{id}/close-vote` | 담당 선생님이 진행 중인 투표를 즉시 마감합니다. 기존 응답을 유지하고 `REVIEWING`으로 전환합니다. |
+| `GET /proposals/votable` | 로그인한 학생에게 현재 참여할 수 있는 투표를 반환합니다. |
+| `POST /teacher/proposals/{id}/confirm` | `{timeSlotId}`를 받아 마감 후 담당 선생님이 투표 후보 중 하나로 개설을 확정합니다. |
+
+수락과 개설 확정은 `TEACHER` 역할로 제한합니다. 선생님 수락 즉시 수요조사를 닫고 일정을 투표에 부칩니다. 최소 관심 인원 조건은 없고 대상 학년 학생 전체가 투표할 수 있습니다. 투표 응답의 `requiresInterest: false`로 이 흐름을 구분하며, 이전 방식의 투표에는 기존 관심 표시 요건을 유지합니다.
+
+새 제안의 `interestCount`는 0에서 시작합니다. `PUT /proposals/{id}/interest`는 작성자 본인의 요청을 거절합니다. 관심 인원, 참여 의향별 수치와 유효 수요는 다른 학생의 실제 응답으로 계산합니다.
 
 ## 후속 확정 사항
 
-실제 API 호스트, CORS/쿠키 도메인, 각 경로의 JSON 및 필드 제약, 검색·정렬 파라미터 이름, 슬롯 요일·교시 형식, 학년별 제한 및 잔여 관심 횟수, 관리자/교사 워크플로, 공동제안 초대·제출, 디자인 원본이 필요합니다. 필드가 달라지면 `src/lib/api.js`에서 서버 JSON을 이 계약으로 변환하도록 수정하면 됩니다.
+실제 API 호스트, CORS/쿠키 도메인, 각 경로의 JSON 및 필드 제약, 검색·정렬 파라미터 이름, 슬롯 요일·교시 형식, 학년별 제한 및 잔여 관심 횟수, 관리자/교사 워크플로, 임시저장 제안 제출, 디자인 원본이 필요합니다. 필드가 달라지면 `src/lib/api.js`에서 서버 JSON을 이 계약으로 변환하도록 수정하면 됩니다.
 
 
 ## 첨부 디자인 반영 시 추가한 계약 가정
 
 - `GET /auth/username-check?username=...` → `{available:boolean}`
-- `GET /enrollments/courses` → `{items:(Proposal & {capacity,enrollmentCount,canEnroll,enrollmentDeadline,courseTime})[]}`
+- `GET /enrollments/courses` → `{items:(Proposal & {capacity,enrollmentCount,canEnroll,enrollmentDeadline,instructorName?:string,courseTime?:string})[]}`. 개설 확정 수업 목록은 담당 선생님(`instructorName`), 운영 시간(`courseTime`), 수업 설명(`description`)을 표시합니다. 강좌는 신청일 전후에도 조회할 수 있어야 합니다.
 - `GET /users/me/enrollments` → `{items:{id,proposalId,title}[]}`
 - `POST /enrollments` 본문 `{proposalId}` → `{id,proposalId,title}`
 - `DELETE /enrollments/{enrollmentId}` → 204 또는 JSON
@@ -65,7 +84,7 @@ type Response = { slotId: number; availability: 'AVAILABLE' | 'ADJUSTABLE' | 'UN
 - 제안 작성은 디자인에 맞춰 `activityPlan,capacity,instructorName,referenceUrl` 필드를 추가했습니다.
 - 회원가입에 `grade,classNumber,email,termsAgreed,privacyAgreed,notificationConsent`를 추가했습니다. 실제 서버의 정책 및 스키마 확정 필요.
 
-체험 수강신청은 예시 ENROLLING 상태 수업만 신청할 수 있고 중복·최대 2개 제한을 확인합니다. 실제 정원·우선권·시간 충돌·서버 동시성 검증을 대체하지 않습니다. 관리자 체험은 명시적으로 표시하며 실제 API 모드에서는 역할을 확인합니다. 보안은 반드시 서버가 다시 검증해야 합니다.
+체험 수강신청은 지정한 날짜의 한국 시간 하루 동안 개설 확정 수업을 신청할 수 있고 중복·최대 2개 제한을 확인합니다. 실제 API도 같은 학교 일정을 설정하고 서버 시계로 `POST /enrollments`와 `DELETE /enrollments/{enrollmentId}`의 신청 가능 시간을 검증해야 합니다. 실제 정원·우선권·시간 충돌·동시 신청도 서버에서 검증해야 합니다. 관리자 체험은 명시적으로 표시하며 실제 API 모드에서는 역할을 확인합니다.
 
 
 ## 개설 알림 연결

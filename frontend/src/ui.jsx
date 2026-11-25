@@ -184,8 +184,10 @@ export function Progress({ value, max = 20, tone = "" }) {
     </div>
   );
 }
-export function Card({ p, listing = false, interested = false }) {
+export function Card({ p, listing = false, interested = false, ownProposal = false }) {
   const deadline = p.status === "VOTING" ? p.voteDeadline : p.surveyDeadline;
+  const teacherVote = p.status === "VOTING" && p.requiresInterest === false;
+  const showInterestGoal = !p.awaitingTeacher && !teacherVote;
   return (
     <Link className="proposal-card" to={`/proposals/${p.id}`}>
       {!listing && <CategoryIcon category={p.category} />}
@@ -198,7 +200,9 @@ export function Card({ p, listing = false, interested = false }) {
         </div>
         <div className={listing ? "card-title" : undefined}>
           <h3>{p.title}</h3>
-          {interested && (
+          {ownProposal ? (
+            <span className="interest-badge proposal-owner-badge">내 제안</span>
+          ) : interested && (
             <span className="interest-badge">
               <Icon name="heart" size={12} />
               관심
@@ -207,27 +211,25 @@ export function Card({ p, listing = false, interested = false }) {
         </div>
         <small>
           제안자 {p.proposerName}
-          {!listing && " · 관심을 모으고 있어요"}
+          {!listing && !teacherVote && " · 관심을 모으고 있어요"}
         </small>
       </div>
       <div className="card-meter">
         <Progress
           value={p.interestCount}
-          max={p.threshold}
-          tone={
-            (
-              listing
-                ? p.threshold > 0 && p.interestCount >= p.threshold
-                : p.category === "ARTS_PE"
-            )
-              ? "orange"
-              : ""
-          }
+          max={showInterestGoal ? p.threshold : p.capacity}
+          tone={showInterestGoal && (listing
+            ? p.threshold > 0 && p.interestCount >= p.threshold
+            : p.category === "ARTS_PE") ? "orange" : ""}
         />
-        <span>
-          {listing && "관심 "}
-          <b>{p.interestCount}</b> / {p.threshold}명
-        </span>
+        {!showInterestGoal ? (
+          <span>관심 <b>{p.interestCount}</b>명</span>
+        ) : (
+          <span>
+            {listing && "관심 "}
+            <b>{p.interestCount}</b> / {p.threshold}명
+          </span>
+        )}
         <small>
           {listing && deadline
             ? `마감 ${date(deadline)}`

@@ -5,15 +5,15 @@ import { Auth, Logo, ErrorBox, Icon } from "../ui";
 import WelcomeBandi from "../WelcomeBandi";
 
 const welcomeSteps = [
-  ["제안", "친구 5명과 듣고 싶은 수업을 올려요"],
-  ["관심 표시", "전교생이 수요조사에 참여해요"],
-  ["일정 투표 · 수강신청", "함께 요일을 정하고 신청해요"],
+  ["제안", "듣고 싶은 수업을 올리고 관심을 모아요"],
+  ["일정 투표", "선생님이 맡으면 대상 학년이 가능한 시간에 투표해요"],
+  ["개설 확정 · 수강신청", "선생님이 정한 시간을 보고 신청해요"],
 ];
 
 const loginSteps = [
-  ["제안", "친구 5명과 함께 원하는 수업을 제안해요."],
-  ["관심 표시", "전교생이 수요조사에 참여해 개설 여부를 미리 판단해요."],
-  ["일정 투표", "함께 들을 친구들이 가능한 요일을 정해요."],
+  ["제안", "원하는 수업을 올리면 바로 수요조사가 시작돼요."],
+  ["일정 투표", "선생님이 제안을 맡으면 대상 학년이 투표해요."],
+  ["개설 확정", "담당 선생님이 투표 결과를 보고 시간을 확정해요."],
 ];
 
 function AfterSteps({ steps }) {
@@ -35,7 +35,7 @@ function AfterSteps({ steps }) {
 }
 
 export function Welcome() {
-  const { reload } = useContext(Auth);
+  const { reload, switchDemo } = useContext(Auth);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
 
@@ -64,8 +64,8 @@ export function Welcome() {
           오신 걸 환영해요
         </h1>
         <p>
-          듣고 싶은 수업이 없나요? 직접 제안하고, 관심을 모으고, 친구들과 요일을
-          정해 방과후 수업을 함께 열어요.
+          듣고 싶은 수업이 없나요? 직접 제안하고, 친구들과 가능한 시간에
+          투표해 방과후 수업을 함께 열어요.
         </p>
         <AfterSteps steps={welcomeSteps} />
         <div className="welcome-actions">
@@ -81,6 +81,11 @@ export function Welcome() {
               지금 올라온 제안 보기
             </Link>
           )}
+          {demoMode && (
+            <button className="quiet" disabled={busy} onClick={() => switchDemo("TEACHER")}>
+              선생님 화면 체험
+            </button>
+          )}
         </div>
         {error && <ErrorBox error={error} />}
       </div>
@@ -90,7 +95,7 @@ export function Welcome() {
 }
 
 export function Login() {
-  const { reload } = useContext(Auth),
+  const { reload, switchDemo } = useContext(Auth),
     navigate = useNavigate();
   const destination = useLocation().state?.from || "/";
   const [error, setError] = useState(null),
@@ -206,14 +211,24 @@ export function Login() {
             </p>
           )}
           {demoMode && (
-            <button
-              type="button"
-              className="quiet block demo-login"
-              disabled={busy}
-              onClick={startDemo}
-            >
-              체험 시작 (회원가입 없이)
-            </button>
+            <>
+              <button
+                type="button"
+                className="quiet block demo-login"
+                disabled={busy}
+                onClick={startDemo}
+              >
+                학생 화면 체험
+              </button>
+              <button
+                type="button"
+                className="quiet block demo-login"
+                disabled={busy}
+                onClick={() => switchDemo("TEACHER")}
+              >
+                선생님 화면 체험
+              </button>
+            </>
           )}
         </div>
       </section>

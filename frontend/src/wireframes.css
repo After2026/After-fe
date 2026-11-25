@@ -873,14 +873,6 @@
   margin: 0;
   accent-color: var(--primary);
 }
-.additional-filters {
-  color: var(--ink-2);
-  font-size: 13px;
-}
-.additional-filters summary {
-  padding: 6px 0;
-  cursor: pointer;
-}
 .listing-page .chips {
   gap: 6px;
 }
@@ -1012,6 +1004,12 @@
   background: var(--primary-weak);
   font-size: 12px;
   font-weight: 600;
+}
+.proposal-owner-badge {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink);
+  white-space: nowrap;
 }
 .listing-page .card-copy small,
 .listing-page .card-meter,
@@ -1338,6 +1336,33 @@
   border-radius: var(--r3);
   font-size: 16px;
 }
+.vote-layout .response-summary .mini-heading { margin-bottom: 12px; }
+.detail-vote-actions {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
+.detail-vote-actions .detail-vote-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--r3);
+  font-size: 15px;
+}
+.detail-vote-actions .text-link { margin-top: 0; }
+.proposal-owner-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.teacher-vote-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .interest-dialog {
   width: min(520px, calc(100% - 32px));
   max-height: calc(100% - 32px);
@@ -1379,19 +1404,56 @@
 .results-layout > .panel {
   padding: 28px;
 }
-.editor-layout > form > .panel h2,
+.editor-layout > div > .panel h2,
 .results-layout .panel h2 {
   font-size: 18px;
   font-weight: 600;
   color: var(--ink);
 }
-.editor-layout .field {
-  font-size: 14px;
+.editor-layout :is(.field, legend) {
+  font-size: 16px;
+}
+.editor-layout :is(.chip, .grade-options label, .segmented label) {
+  font-size: 15px;
+}
+.editor-layout .grade-options {
+  flex-wrap: wrap;
 }
 .editor-layout .field :is(input, textarea, select) {
   font-size: 16px;
   border-color: var(--line-strong);
   border-radius: var(--r3);
+}
+.editor-layout .field :is(input, textarea)::placeholder {
+  font-size: 15px;
+}
+.proposal-editor-submit {
+  inline-size: min(100%, 132px);
+  min-block-size: 38px;
+  padding: 7px 12px;
+}
+.new-proposal-layout {
+  --proposal-actions-width: 388px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) var(--proposal-actions-width);
+}
+.new-proposal-layout > aside {
+  inline-size: min(100%, var(--proposal-actions-width));
+}
+.new-proposal-layout > aside > .panel {
+  padding-inline: 18px;
+}
+.new-proposal-layout .proposal-editor-submit,
+.new-proposal-layout > aside > .panel > .quiet.block {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  inline-size: 100%;
+  min-block-size: 44px;
+  font-size: 16px;
+}
+@media (max-width: 960px) {
+  .new-proposal-layout { grid-template-columns: minmax(0, 1fr); }
 }
 .vote-heading-meta {
   display: flex;
@@ -1580,6 +1642,112 @@
   min-height: 44px;
   font-size: 14px;
 }
+.course-catalog {
+  --catalog-inset: 28px;
+}
+.course-catalog .course-catalog-heading {
+  flex-wrap: wrap;
+  align-items: flex-end;
+  margin-bottom: 28px;
+}
+.course-catalog-heading h1 { margin: 0; }
+.course-catalog-heading .subtitle { margin: 6px 0 0; }
+.course-catalog-heading .button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  border-radius: var(--r2);
+  font-size: 14px;
+}
+.course-catalog-body {
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background: var(--surface);
+}
+.course-catalog-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px var(--catalog-inset);
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-2);
+}
+.course-catalog-summary p { margin: 0; font-size: 14px; }
+.course-catalog-summary .tag { font-size: 13px; }
+.course-catalog-list {
+  margin: 0;
+  padding: 0 var(--catalog-inset);
+  list-style: none;
+}
+.course-catalog-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(16rem, .65fr);
+  align-items: start;
+  gap: 28px;
+  padding: 24px 0;
+  overflow-wrap: anywhere;
+}
+.course-catalog-row + .course-catalog-row { border-top: 1px solid var(--line); }
+.course-catalog-description h2 {
+  margin: 0;
+  font-size: 21px;
+  line-height: 1.35;
+  font-weight: 650;
+}
+.course-catalog-description h2 a { color: var(--ink); }
+.course-catalog-description h2 a:hover,
+.course-catalog-description h2 a:focus-visible {
+  color: var(--primary-text);
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.course-catalog-description p {
+  max-width: 60ch;
+  margin: 8px 0 0;
+  color: var(--ink-2);
+  font-size: 14px;
+  line-height: 1.6;
+  white-space: pre-line;
+}
+.course-catalog-description .course-catalog-category {
+  margin: 0 0 4px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.course-catalog-facts {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+  gap: 16px;
+  margin: 0;
+  padding-top: 6px;
+}
+.course-catalog-facts dt {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.course-catalog-facts svg { flex: none; }
+.course-catalog-facts dd {
+  margin: 4px 0 0;
+  color: var(--ink);
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+.course-catalog-empty { margin: 0; padding: 32px var(--catalog-inset); }
+@media (max-width: 700px) {
+  .course-catalog { --catalog-inset: 16px; }
+  .course-catalog-row { grid-template-columns: minmax(0, 1fr); gap: 14px; padding: 20px 0; }
+  .course-catalog-facts { padding-top: 0; }
+  .course-catalog-description h2 { font-size: 19px; }
+}
+.enrollment-locked h2 { margin: 0; font-size: 20px; }
+.enrollment-locked { max-width: 640px; }
+.enrollment-locked .button { display: inline-flex; margin-top: 8px; }
 .admin-sidebar > .brand {
   display: inline-flex;
   padding: 0;
@@ -1603,8 +1771,59 @@
   background: var(--primary-weak);
   color: var(--ink);
 }
+.teacher-layout .admin-sidebar > button {
+  display: block;
+  margin: 8px 0;
+}
+.teacher-proposal,
+.teacher-form,
+.proposal-submit {
+  display: grid;
+  gap: 16px;
+}
+.teacher-form .field,
+.proposal-submit p,
+.proposal-submit .field {
+  margin: 0;
+}
+.teacher-form > button {
+  justify-self: start;
+}
+.teacher-slot-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: 8px;
+}
+.teacher-slot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 48px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r2);
+  padding: 12px;
+  cursor: pointer;
+}
+.teacher-slot:has(input:checked) {
+  border-color: var(--primary-line);
+  background: var(--primary-weak);
+}
+.teacher-slot small {
+  display: block;
+  color: var(--ink-2);
+}
+.teacher-layout .review-item :is(small, span) {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+.teacher-layout .review-item strong {
+  font-size: 16px;
+}
 
 @media (max-width: 700px) {
+  .teacher-layout .admin-sidebar > button {
+    margin: 0;
+  }
   .admin-sidebar > .brand {
     margin: 0;
   }

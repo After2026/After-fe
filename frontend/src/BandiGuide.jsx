@@ -12,17 +12,17 @@ import signup from "./assets/bandi-signup.svg";
 import vote from "./assets/bandi-vote.svg";
 
 const guides = [
-  ["/", list, "듣고 싶은 수업이 있으면 관심을 표시해 봐!"],
+  ["/", list, "듣고 싶은 수업을 찾거나 직접 제안해 봐!"],
   ["/login", login, "다시 왔구나! 아이디로 로그인해 줘."],
   ["/signup", signup, "학교에서 받은 인증번호부터 넣어 줘."],
   ["/proposals/new", propose, "듣고 싶은 수업을 친구들과 제안해 봐!"],
-  ["/proposals/:id", detail, "듣고 싶은 수업에 참여 의향을 남겨 봐!"],
+  ["/proposals/:id", detail, "수업 내용과 진행 상황을 살펴봐!"],
   ["/proposals/:id/vote", vote, "갈 수 있는 날을 골라 줘."],
   ["/proposals/:id/result", results, "요일별 투표 결과를 확인해 봐!"],
-  ["/enrollments", enroll, "개설된 관심 강좌는 목록 맨 위에 모아 뒀어."],
+  ["/enrollments", enroll, "학교에서 정한 날에 수강신청을 할 수 있어."],
   ["/my", my, "내가 관심을 표시한 수업과 제안을 확인해 봐."],
   ["/notifications", notifications, "기다리던 강좌가 열리면 알려 줄게."],
-  ["/admin", admin, "제안 내용을 살펴보고 검토 결과를 선택해 주세요."],
+  ["/teacher", admin, "제안을 맡아 투표를 열고, 마감 후 수업 시간을 확정해 주세요."],
 ];
 
 export default function BandiGuide({ welcome, user }) {

@@ -1,15 +1,21 @@
 import { useState, useEffect, useContext } from "react";
-import { Link, Routes, Route, useLocation, Navigate } from "react-router-dom";
+import { Link, Routes, Route, useLocation, useNavigate, Navigate } from "react-router-dom";
 import BandiGuide from "./BandiGuide";
 import { service, demoMode } from "./lib/service";
 import { Auth, ErrorBox, Logo, Icon } from "./ui";
-import { Home, Detail, NewProposal, My, Guide } from "./pages/Proposals";
+import { Home, Detail, NewProposal, EditProposal, My, Guide } from "./pages/Proposals";
 import { Vote, Results } from "./pages/Voting";
 import { Login, Signup, Welcome } from "./pages/Authentication";
 import { Notifications, NotificationsBell } from "./pages/Notifications";
-import { Enrollments, Admin } from "./pages/Management";
+import { ConfirmedCourses, Enrollments, Teacher } from "./pages/Management";
 const studentMenu = [
   { path: "/", icon: "home", label: "수업 제안", mobileLabel: "제안" },
+  {
+    path: "/courses",
+    icon: "book",
+    label: "개설 확정 수업",
+    mobileLabel: "개설 수업",
+  },
   { path: "/enrollments", icon: "check", label: "수강신청" },
   { path: "/my", icon: "user", label: "내 활동" },
 ];
@@ -41,7 +47,7 @@ function StudentNav({ mobile = false }) {
   );
 }
 
-function Protected({ children, admin = false }) {
+function Protected({ children, role }) {
   const { user, loading } = useContext(Auth);
   const location = useLocation();
   if (loading)
@@ -51,8 +57,8 @@ function Protected({ children, admin = false }) {
       </p>
     );
   if (!user) return <Navigate to="/login" state={{ from: location }} replace />;
-  if (admin && !demoMode && !["ADMIN", "SUPER_ADMIN"].includes(user.role))
-    return <ErrorBox error="관리자만 접근할 수 있습니다." />;
+  if (role && user.role !== role)
+    return <ErrorBox error={role === "TEACHER" ? "학교 선생님만 접근할 수 있습니다." : "학생만 접근할 수 있습니다."} />;
   return children;
 }
 export default function App() {
@@ -60,10 +66,12 @@ export default function App() {
     [loading, setLoading] = useState(true),
     [error, setError] = useState(null);
   const location = useLocation();
+  const navigate = useNavigate();
   const welcomePage = location.pathname === "/" && !loading && !user;
   const authPage =
       welcomePage || ["/login", "/signup"].includes(location.pathname),
-    adminPage = location.pathname.startsWith("/admin");
+    teacherPage = location.pathname === "/teacher",
+    teacher = user?.role === "TEACHER";
   async function reload() {
     setLoading(true);
     try {
@@ -86,25 +94,43 @@ export default function App() {
     try {
       await service.logout();
       setUser(null);
+      navigate("/", { replace: true });
+    } catch (e) {
+      setError(e);
+    }
+  }
+  async function switchDemo(role) {
+    if (!demoMode) return;
+    try {
+      if (role === "TEACHER") await service.startTeacherDemo();
+      else await service.startDemo();
+      await reload();
+      navigate(role === "TEACHER" ? "/teacher" : "/", { replace: true });
     } catch (e) {
       setError(e);
     }
   }
   return (
-    <Auth.Provider value={{ user, loading, reload }}>
+    <Auth.Provider value={{ user, loading, reload, logout, switchDemo }}>
       <div
-        className={`app-shell ${authPage ? "auth-shell" : ""} ${adminPage ? "admin-shell" : ""} ${welcomePage ? "welcome-shell" : ""} ${location.pathname === "/signup" ? "signup-shell" : ""}`}
+        className={`app-shell ${authPage ? "auth-shell" : ""} ${teacherPage ? "admin-shell" : ""} ${welcomePage ? "welcome-shell" : ""} ${location.pathname === "/signup" ? "signup-shell" : ""}`}
       >
-        {!adminPage && location.pathname !== "/login" && (
+        {!teacherPage && location.pathname !== "/login" && (
           <header className="site-header">
             <div className="header-inner">
               <Logo kind={welcomePage ? "wordmark" : undefined} />
-              {!authPage && user && <StudentNav />}
+              {!authPage && user && !teacher && <StudentNav />}
+              {!authPage && teacher && (
+                <nav aria-label="주 메뉴">
+                  <Link to="/teacher">제안 접수 · 일정 확정</Link>
+                  <Link to="/courses">개설 확정 수업</Link>
+                </nav>
+              )}
               <div className="account">
                 {!authPage && user && <NotificationsBell />}
                 {!authPage && user ? (
                   <>
-                    <Link className="profile" to="/my">
+                    <Link className="profile" to={teacher ? "/teacher" : "/my"}>
                       <span aria-hidden="true">
                         {user.name?.[0] || <Icon name="user" size={16} />}
                       </span>
@@ -142,7 +168,7 @@ export default function App() {
                   <Welcome />
                 ) : (
                   <Protected>
-                    <Home />
+                    {teacher ? <Navigate to="/teacher" replace /> : <Home />}
                   </Protected>
                 )
               }
@@ -161,12 +187,20 @@ export default function App() {
             <Route
               path="/my"
               element={
-                <Protected>
+                <Protected role="STUDENT">
                   <My />
                 </Protected>
               }
             />
             <Route path="/votes" element={<Navigate to="/my" replace />} />
+            <Route
+              path="/courses"
+              element={
+                <Protected>
+                  <ConfirmedCourses />
+                </Protected>
+              }
+            />
             <Route
               path="/enrollments"
               element={
@@ -176,17 +210,18 @@ export default function App() {
               }
             />
             <Route
-              path="/admin"
+              path="/teacher"
               element={
-                <Protected admin>
-                  <Admin />
+                <Protected role="TEACHER">
+                  <Teacher />
                 </Protected>
               }
             />
+            <Route path="/admin" element={<Navigate to="/teacher" replace />} />
             <Route
               path="/proposals/new"
               element={
-                <Protected>
+                <Protected role="STUDENT">
                   <NewProposal />
                 </Protected>
               }
@@ -200,9 +235,17 @@ export default function App() {
               }
             />
             <Route
+              path="/proposals/:id/edit"
+              element={
+                <Protected role="STUDENT">
+                  <EditProposal />
+                </Protected>
+              }
+            />
+            <Route
               path="/proposals/:id/vote"
               element={
-                <Protected>
+                <Protected role="STUDENT">
                   <Vote />
                 </Protected>
               }
@@ -227,9 +270,9 @@ export default function App() {
           </Routes>
         </main>
         <BandiGuide welcome={welcomePage} user={user} />
-        {!authPage && !adminPage && user && (
+        {!authPage && !teacherPage && user && (
           <>
-            <StudentNav mobile />
+            {!teacher && <StudentNav mobile />}
             <footer>
               <span>
                 {demoMode
@@ -237,8 +280,10 @@ export default function App() {
                   : "우리가 만드는 방과후"}
               </span>
               <Link to="/guide">이용 안내</Link>
-              {(demoMode || ["ADMIN", "SUPER_ADMIN"].includes(user?.role)) && (
-                <Link to="/admin">관리자 검토{demoMode ? " 체험" : ""}</Link>
+              {demoMode && user.role === "STUDENT" && (
+                <button className="quiet" onClick={() => switchDemo("TEACHER")}>
+                  선생님 화면 체험
+                </button>
               )}
             </footer>
           </>
