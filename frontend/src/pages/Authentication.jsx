@@ -55,7 +55,7 @@ export function Welcome() {
     <section className="welcome-layout">
       <div className="welcome-copy">
         <span className="welcome-status">
-          {demoMode ? "체험 모드 · 제안 둘러보기" : "우리가 만드는 방과후"}
+          {demoMode ? "2026학년도 2학기 · 제안 접수 중" : "우리가 만드는 방과후"}
         </span>
         <h1>
           <span>After</span>에<br />

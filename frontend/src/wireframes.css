@@ -183,6 +183,19 @@
 }
 
 .welcome-shell {
+  /* Dark palette from the supplied Welcome HTML and reference screenshot. */
+  --surface: #16171b;
+  --track: #2b2e35;
+  --ink: #f3f4f5;
+  --ink-2: #dcdee3;
+  --line: #393d46;
+  --primary: #7096f2;
+  --primary-hover: #97b3f6;
+  --primary-weak: #1a2c55;
+  --primary-text: #b4c9f8;
+  --on-primary: #0b1a3d;
+  color: var(--ink);
+  color-scheme: dark;
   background: var(--surface);
   min-height: max(900px, 100vh);
 }
@@ -201,6 +214,7 @@
   font-weight: 600;
 }
 .welcome-shell .account .button {
+  color: var(--on-primary);
   padding-inline: 18px;
   border-radius: var(--r2);
 }
@@ -300,6 +314,7 @@
   font-size: 16px;
 }
 .welcome-actions .button:not(.quiet) {
+  color: var(--on-primary);
   padding: 0 28px;
   font-size: 17px;
   font-weight: 700;
@@ -1033,6 +1048,68 @@
 @media (max-width: 1000px) {
   .bandi-guide {
     display: none;
+  }
+}
+@media (min-width: 701px) and (max-width: 1020px) {
+  .welcome-shell {
+    min-height: 100vh;
+  }
+  .welcome-layout {
+    min-height: 0;
+    padding: 14px 3.66vw 90px;
+  }
+  .welcome-copy,
+  .welcome-bandi {
+    flex: 1 1 0;
+  }
+  .welcome-copy {
+    gap: 18px;
+  }
+  .welcome-status {
+    min-height: 24px;
+    padding-inline: 9px;
+    font-size: 11px;
+  }
+  .welcome-copy > p {
+    font-size: 14px;
+    line-height: 21px;
+  }
+  .welcome-copy .after-steps {
+    gap: 8px;
+  }
+  .welcome-copy .after-steps li {
+    gap: 9px;
+  }
+  .welcome-copy .after-step-number {
+    width: 21px;
+    height: 21px;
+    font-size: 11px;
+  }
+  .welcome-copy .after-step-copy {
+    font-size: 12px;
+  }
+  .welcome-copy .after-step-copy > span {
+    font-size: 10px;
+  }
+  .welcome-actions > * {
+    min-height: 42px;
+    padding-inline: 18px;
+    font-size: 13px;
+  }
+  .welcome-actions .button:not(.quiet) {
+    padding-inline: 21px;
+    font-size: 13px;
+  }
+  .welcome-bandi {
+    height: clamp(360px, 48.1vw, 520px);
+  }
+  .welcome-bandi::before {
+    width: min(100%, 34.6vw);
+  }
+  .bandi-hint {
+    min-height: 23px;
+    padding: 4px 9px;
+    font-size: 10px;
   }
 }
 @media (max-width: 700px) {

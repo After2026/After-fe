@@ -233,7 +233,7 @@ export function mountWelcomeBandi(canvas) {
     ty = 0,
     rx = 0,
     ry = 0,
-    waveAmt = 1,
+    waveAmt = reduce ? 0 : 1,
     joy = 0,
     over = false;
   let ray = new THREE.Raycaster(),
@@ -314,8 +314,11 @@ export function mountWelcomeBandi(canvas) {
     body.scale.set(1 / squash, 0.95 * squash, 0.92 / squash);
     shadow.scale.setScalar(1 - (bob + hop) * 0.3);
     shadow.material.opacity = 1 - hop * 0.45;
-    let cyc =
-      t < 3.2 ? 1 : Math.max(0, Math.sin(Math.min(1, (t % 6) / 2.6) * Math.PI));
+    let cyc = reduce
+      ? 0
+      : t < 3.2
+        ? 1
+        : Math.max(0, Math.sin(Math.min(1, (t % 6) / 2.6) * Math.PI));
     waveAmt += (cyc - waveAmt) * 0.06;
     armR.rotation.z =
       0.55 +
@@ -355,9 +358,10 @@ export function mountWelcomeBandi(canvas) {
       );
       m.rotation.x = t * u.rot;
       m.rotation.y = t * u.rot * 0.7;
-      m.scale.setScalar(
-        Math.max(0.001, backOut(Math.min(1, Math.max(0, (t0 - 0.4) / 0.8)))),
-      );
+      const particleIntro = reduce
+        ? 1
+        : Math.min(1, Math.max(0, (t0 - 0.4) / 0.8));
+      m.scale.setScalar(Math.max(0.001, backOut(particleIntro)));
     });
     renderer.render(scene, cam);
     if (!reduce) raf = window.requestAnimationFrame(frame);
